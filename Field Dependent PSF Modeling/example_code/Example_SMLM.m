@@ -1,36 +1,35 @@
 % Copyright (c) 2022 Li Lab, Southern University of Science and Technology, Shenzhen
-% author: Yiming Li 
+% author: Li-Lab
 % email: liym2019@sustech.edu.cn
 % date: 2022.05.05
-% Tested with CUDA 11.3 (Express installation) and Matlab 2020b
+% Tested with CUDA 10.1 (Express installation) and Matlab R2019a
 %%
-close all
 clear all
 clc
 addpath source
-frame_size = 64;  %pixel
-N_pixels = 27;     %pixel
-frame_N = 200;    %frame
-pixel_size = 100; %parameter nm
+frame_size = 64;  % pixel, the image size
+N_pixels = 27;     % pixel, the psf size of beads
+% frame_N = 200;    % number of frames
+pixel_size = 100; %nm, pixel size of the image
 Nmol = 1;
-Nphotons = 50000 +10000*rand(1,Nmol);
-bg = 100 + 100*rand(1,Nmol);
+Nphotons = 30000 +5000*rand(1,Nmol); %simulate the photons per beads
+bg = 100 + 100*rand(1,Nmol);         %simulate the background of image
 
-z_depth = 2000;
-z_step =50; 
+z_depth = 2000;               %nm, the depth of bead stack
+z_step =50;                   %nm, the step of bead stack in each frame
 
-%% hyper parameters for PSF model used for fit
+%% hyper parameters for PSF model used for simulate
 paraSim.NA = 1.35;                                                   % numerical aperture of obj             
-paraSim.refmed = 1.34;     %    1.35                                     % refractive index of sample medium
-paraSim.refcov = 1.525;    %    1.518                                      % refractive index of converslip
-paraSim.refimm = 1.406;     %   1.518                                       % refractive index of immersion oil
-paraSim.lambda = 672;      %     668                                      % wavelength of emission
-paraSim.objStage0 = -0;                                                % nm, initial objStage0 position,relative to focus at coverslip
+paraSim.refmed = 1.34;                                               % refractive index of sample medium
+paraSim.refcov = 1.525;                                              % refractive index of converslip
+paraSim.refimm = 1.406;                                              % refractive index of immersion oil
+paraSim.lambda = 680;                                                % wavelength of emission
+paraSim.objStage0 = -1000;                                                % nm, initial objStage0 position,relative to focus at coverslip
 paraSim.zemit0 = -1*paraSim.refmed/paraSim.refimm*(paraSim.objStage0);  % reference emitter z position, nm, distance of molecule to coverslip
-paraSim. pixelSizeX = pixel_size;                                        % nm, pixel size of the image
-paraSim. pixelSizeY = pixel_size;                                        % nm, pixel size of the image
+paraSim.pixelSizeX = pixel_size;                                        % nm, pixel size of the image
+paraSim.pixelSizeY = pixel_size;                                        % nm, pixel size of the image
 paraSim.Npupil = 64;                                                     % sampling at the pupil plane
-paraSim.aberrations = [ 2.0000   -2.0000    0.3706
+paraSim.aberrations = [ 2.0000   -2.0000    0.3706                       %Zernik polynomial coefficients obtained by fitting bead stacks with the actual microscope system
                         2.0000    2.0000   72.7186
                         3.0000   -1.0000   19.0738
                         3.0000    1.0000    1.5904
@@ -51,12 +50,13 @@ paraSim.aberrations = [ 2.0000   -2.0000    0.3706
                         7.0000    1.0000   -2.2734
                         7.0000   -1.0000   -0.3728
                         8.0000         0   11.1233];
+                    
 paraSim.Nmol = 1; 
 paraSim.sizeX = N_pixels;
 paraSim.sizeY = N_pixels;
 paraSim.xemit = 0;
 paraSim.yemit = 0;
-paraSim.zemit = 1000;
+paraSim.zemit = 0;
 paraSim.objStage = 0;
 
 
@@ -70,9 +70,10 @@ for idx_stack = 1:stacks_num
         paraSim.zemit = -((idx_stack-1)*z_step-z_depth/2);
         paraSim.showAberrationNumber=j;
         paraSim.aberrationsParas(j,:) = paraSim.aberrations(:,3);
-        [PSFs, Waberration]=psf_simu2_floatC(paraSim); 
+%         [PSFs, Waberration]=psf_simu2_floatC(paraSim); 
+        [PSFs, Waberration]=psf_gpu_simu2(paraSim); 
     end
-    PSFs = PSFs.*Nphotons+bg; %add by shiwei 2020/05/20  
+    PSFs = PSFs.*Nphotons+bg;  
     PSF_stack(:,:,idx_stack)=PSFs;
     
 end
@@ -82,6 +83,7 @@ end
 f = figure
 initPosition = f.Position;
 f.Position = [initPosition(1), initPosition(2)-900+initPosition(4),900, 900];
+
 for k=1:length(PSF_stack)
     subplot(7,7,k);
     imagesc(PSF_stack(:,:,k)) ;
@@ -89,24 +91,26 @@ for k=1:length(PSF_stack)
     set(gca,'FontName','time','FontSize',10,'FontWeight','bold');
     set(sub_title,'FontName','time','FontSize',12,'LineWidth',3,'FontWeight','bold'); 
 end
-
+% sgtitle('Simulated bead stack');
 
 %% hyper parameters for PSF model used for fit
 paraFit.NA = paraSim.NA;                                                % numerical aperture of obj             
 paraFit.refmed = paraSim.refmed;                                            % refractive index of sample medium
 paraFit.refcov = paraSim.refcov;                                           % refractive index of converslip
-paraFit.refimm = paraSim.refimm;                                           % refractive index of immersion oil
+paraFit.refimm =paraSim. refimm;                                           % refractive index of immersion oil
 paraFit.lambda = paraSim.lambda;                                             % wavelength of emission
 paraFit.zemit0 = paraSim.zemit0;              % reference emitter z position, nm, distance of molecule to coverslip
 paraFit.objStage0 = paraSim.objStage0;                                            %  nm, initial objStage0 position,relative to focus at coverslip
 paraFit. pixelSizeX = paraSim.pixelSizeX;                                        % nm, pixel size of the image
-paraFit. pixelSizeY = paraSim.pixelSizeY;                                        % nm, pixel size of the image
-paraFit.Npupil = paraSim.Npupil;                                             % sampling at the pupil plane
+paraFit. pixelSizeY = paraSim.pixelSizeX;                                        % nm, pixel size of the image
+paraFit.Npupil =paraSim.Npupil;                                             % sampling at the pupil plane
 paraFit.sizeX = size(PSF_stack,1);
 paraFit.sizeY = size(PSF_stack,2);
 paraFit.sizeZ = size(PSF_stack,3);
 
-paraFit.aberrations = paraSim.aberrations;
+paraFit.aberrations = [2,-2,0.0; 2,2,0.0; 3,-1,0.0; 3,1,0.0; 4,0,0.0; 3,-3,0.0; 3,3,0.0; 4,-2,0.0; 4,2,0.0; 5,-1,0.0; 5,1,0.0; 6,0,0.0; 4,-4,0.0; 4,4,0.0;  5,-3,0.0; 5,3,0.0;  6,-2,0.0; 6,2,0.0; 7,1,0.0; 7,-1,0.00; 8,0,0];
+
+% paraFit.aberrations = paraSim.aberrations;
 
 %% initial parameters for fit
 % output parameters order [21aberrations, x, y, z, I, bg]
@@ -212,7 +216,7 @@ ApertureMask = double((XPupil.^2+YPupil.^2)<1.0);
 
 Waberration0 = zeros(size(XPupil));
 orders = paraFit.aberrations(:,1:2);
-zernikecoefs = thetainit(1:21);
+zernikecoefs = P(1:21);
 normfac = sqrt(2*(orders(:,1)+1)./(1+double(orders(:,2)==0)));
 zernikecoefs = normfac.*zernikecoefs;
 allzernikes = get_zernikefunctions(orders,XPupil,YPupil);
@@ -225,6 +229,9 @@ axpupil = axes(figure);
 imagesc(axpupil,Waberration0)
 axis(axpupil,'equal')
 axis(axpupil,'tight')
+ylabel('Y(pixel)') ,xlabel('X(pixel)')
+c_title=colorbar;
+title(c_title,'nm')
 
 axMode =axes(figure);
 bar(axMode,[paraSim.aberrations(:,3),P(1:21)]);
@@ -234,5 +241,6 @@ for k=size(orders):-1:1
 end
 axMode.XTick=1:length(axn);
 axMode.XTickLabel=axn;
-
+xtickangle(45)
+ylabel('zernike rms value(nm)') ,xlabel('zernike mode')
 disp('...Successfully finished!');

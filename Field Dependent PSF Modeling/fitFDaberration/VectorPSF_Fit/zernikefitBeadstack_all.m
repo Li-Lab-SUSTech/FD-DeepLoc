@@ -1,7 +1,4 @@
-function [zernikecoeff_P,Waberration1,PSFzernike, sigmaxy,RRSE,MAPE,z_pos]=zernikefitBeadstack_all(data,data_avg,p,axzernike,axpupil,beadspos_single,aberrations_avg0,aberrations_avg1,z0_shift,sigmaxy_avg) %modify by shiwei 2020/08/20
-% function [zernikecoeff_P0 ,zernikecoeff_P, sigmaxy,PSFzernike,rmse0,mape0,rmse1,mape1,rmse_avg0,mape_avg0,rmse_avg1,mape_avg1]=zernikefitBeadstack_all(data,data_avg,p,axzernike,axpupil,beadspos_single) 
-% function [paraSim,PSFzernike]=zernikefitBeadstack(data,p,axzernike,axpupil,axmode)
-
+function [zernikecoeff_P,Waberration1,PSFzernike,sigmaxy,RRSE,MAPE,z_pos]=zernikefitBeadstack_all(data,data_avg,p,psfrescale,axzernike,axpupil,beadspos_single,aberrations_avg1,z0_shift) 
 Npixel = size(data,1);
 Nz = size(data,3);
 paraFit=p;
@@ -236,8 +233,8 @@ end
 %start add by fushuang 2021/08/21
 % I_sigmax=1/(2*pi*otf_sigmax)*Npixel_otf/ds_step;
 % I_sigmay=1/(2*pi*otf_sigmay)*Npixel_otf/ds_step;
-I_sigmax=sigmaxy_avg(1);
-I_sigmay=sigmaxy_avg(2);
+I_sigmax=psfrescale;
+I_sigmay=psfrescale;
 [x1,y1]=meshgrid( - 2 : 2 );
 gauss_psf=exp(-x1.^2./2./I_sigmax^2).*exp(-y1.^2./2./I_sigmay^2);
 gauss_psf = gauss_psf/sum(gauss_psf,'all');
@@ -288,8 +285,8 @@ RRSE.RRSE_avg1= norm(model_avg_err1(:),2) / norm(data_avg(:),2);
 MAPE.MAPE_avg1 = mean(sum(abs(model_avg_err1),[1,2])./sum(data_avg,[1,2]))*100;%add by shiwei 2021/06/08
 
 
-RRSE.STD_aberrations1 =sqrt(mean((P(1:21)-aberrations_avg0(:,3)).^2));
-MAPE.MAPE_aberrations1 = mean(abs(P(1:21)-aberrations_avg0(:,3))./abs(aberrations_avg0(:,3)))*100;
+RRSE.STD_aberrations1 =sqrt(mean((P(1:21)-aberrations_avg1(:,3)).^2));
+MAPE.MAPE_aberrations1 = mean(abs(P(1:21)-aberrations_avg1(:,3))./abs(aberrations_avg1(:,3)))*100;
 
 end
 
@@ -349,12 +346,11 @@ end
 Waberration1 = Waberration1.*ApertureMask;
 % figure,imshow(Waberration1);
 %% start modify by shiwei 2020/08/25
-% if 1 == beadspos_single(3)
-%     figure
+
 %     imx(cat(1,data,model,data-model))
 %     figure_title = title(['(x y ) coordinates is ','(',num2str(beadspos_single(1:2)),')']);
 %     set(figure_title,'FontName','time','FontSize',17,'LineWidth',3,'FontWeight','bold');
-% end
+
 
 % % start mark show aberration
 % figure,bar([P0(1:21),P(1:21)]);

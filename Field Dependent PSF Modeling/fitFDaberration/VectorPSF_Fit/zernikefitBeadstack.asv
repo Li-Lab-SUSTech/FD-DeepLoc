@@ -1,14 +1,11 @@
-function [paraSim,PSFzernike,aberrations_avg0,aberrations_avg1,RRSE,MAPE,sigmaxy_avg]=zernikefitBeadstack(data,p,axzernike,axpupil,axmode)
+function [paraSim,PSFzernike,aberrations_avg1,RRSE,MAPE]=zernikefitBeadstack(data,p,psfrescale,axzernike,axpupil,axmode)
 Npixel = size(data,1);
 Nz = size(data,3);
 paraFit=p;
 paraFit.sizeX = size(data,1);
 paraFit.sizeY = size(data,2);
 paraFit.sizeZ = size(data,3);
-% aberrations (Zernike orders [n1,m1,A1,n2,m2,A2,...] with n1,n2,... the
-% radial orders, m1,m2,... the azimuthal orders, and A1,A2,... the Zernike
-% coefficients in lambda rms, so 0.072 means diffraction limit)
-% parameters.aberrations = [1,1,0.0; 1,-1,-0.0; 2,0,-0.0; 4,0,0.0; 2,-2,0.0; 2,2,0.0; 4,-2,0.0];
+
 paraFit.aberrations = [2,-2,0.0; 2,2,0.0; 3,-1,0.0; 3,1,0.0; 4,0,0.0; 3,-3,0.0; 3,3,0.0; 4,-2,0.0; 4,2,0.0; 5,-1,0.0; 5,1,0.0; 6,0,0.0; 4,-4,0.0; 4,4,0.0;  5,-3,0.0; 5,3,0.0;  6,-2,0.0; 6,2,0.0; 7,1,0.0; 7,-1,0.0; 8,0,0.0];
 paraFit.aberrations(:,3) =  paraFit.aberrations(:,3)*paraFit.lambda;
 
@@ -46,7 +43,6 @@ for i = 1:Nz
     z0(i) = 0;
 end
 
-
 allTheta = zeros(numAberrations+5,Nz);
 allTheta(numAberrations+1,:)=x0';
 allTheta(numAberrations+2,:)=y0';
@@ -73,8 +69,6 @@ for i = 1:numAberrations+5
         end
     end
 end
-
-
 
 for i = 1:numparams
     if map(i,1)==1
@@ -104,7 +98,7 @@ paraFit.Nitermax = paraFit.iterations;
 % [P,model,err] = MLE_FitAbberation_Final(data,thetainit,paraFit,shared);
 
 
-if 1
+% if 1
 parC.NA = paraFit.NA;
 parC.refmed = paraFit.refmed;
 parC.refcov = paraFit.refcov;
@@ -135,60 +129,62 @@ thetainit_d =thetainit.*1;
 shared_d=shared.*1;
 
 
-% tic
-%[P_cDouble,model_cDouble,err_cDouble] = MLE_FitAbberation_Final_CDouble2(data_double,thetainit_d,paraFitCell,shared_d,0.1,0);
+% % tic
+% %[P_cDouble,model_cDouble,err_cDouble] = MLE_FitAbberation_Final_CDouble2(data_double,thetainit_d,paraFitCell,shared_d,0.1,0);
+% % toc
+% 
+% % tic
+% %[P_cDouble,model_cDouble,err_cDouble] = MLE_FitAbberation_Final_CDouble2(data_double,thetainit_d,paraFitCell,shared_d,0.1,0);
+% %[P_gpu,model_gpu,err_gpu] = MLE_FitAbberation_Final_GPU_Double(data_double,thetainit_d,paraFitCell,shared_d,0.1,0);
+% [P0,model0,err0] = MLE_FitAbberation_Final_GPU_float(data_double,thetainit_d,paraFitCell,shared_d,0.1,0);
+% % [P0_C,model0_C,err0_C] = MLE_FitAbberation_Final_CFloat(data_double,thetainit_d,paraFitCell,shared_d,0.1,0);
+% % [P0,model0,err0] = MLE_FitAbberation_Final_FixPara_Regu_sigma(data,thetainit,paraFit,shared,0.1,0);
+% % rmse_avg0 = sqrt(mean(sum(sum(( (model0-data)./max(max(model0)) ).^2))/size(data,1)/size(data,2))); %add by shiwei 2021/06/01 from fushuang
+% % rmse_avg0 = sqrt(mean(mean(mean((model0-data).^2))));
+% model_all_avg_err0= model0-data;
+% RRSE.RRSE_all_avg0= norm(model_all_avg_err0(:),2) / norm(data(:),2);  %norn 先平方后相加再开根号
+% % rmse_avg0 =sqrt(mean(sum(sum(( (model0-data)./max(max(model0)) ).^2))));
+% MAPE.MAPE_all_avg0 = mean(sum(abs(model_all_avg_err0),[1,2])./sum(data,[1,2]))*100;%add by shiwei 2021/06/05 from fushuang
+% aberrations_avg0 =  paraFit.aberrations;
+% aberrations_avg0(:,3)=P0(1:21);
+% % [P0_cmp,model0_cmp,err0_cmp] = MLE_FitAbberation_Final_FixPara_Regu_sigma(data,thetainit,paraFit,shared,0.1,0);
 % toc
 
-% tic
-%[P_cDouble,model_cDouble,err_cDouble] = MLE_FitAbberation_Final_CDouble2(data_double,thetainit_d,paraFitCell,shared_d,0.1,0);
-%[P_gpu,model_gpu,err_gpu] = MLE_FitAbberation_Final_GPU_Double(data_double,thetainit_d,paraFitCell,shared_d,0.1,0);
-[P0,model0,err0] = MLE_FitAbberation_Final_GPU_float(data_double,thetainit_d,paraFitCell,shared_d,0.1,0);
-% [P0_C,model0_C,err0_C] = MLE_FitAbberation_Final_CFloat(data_double,thetainit_d,paraFitCell,shared_d,0.1,0);
-% [P0,model0,err0] = MLE_FitAbberation_Final_FixPara_Regu_sigma(data,thetainit,paraFit,shared,0.1,0);
-% rmse_avg0 = sqrt(mean(sum(sum(( (model0-data)./max(max(model0)) ).^2))/size(data,1)/size(data,2))); %add by shiwei 2021/06/01 from fushuang
-% rmse_avg0 = sqrt(mean(mean(mean((model0-data).^2))));
-model_all_avg_err0= model0-data;
-RRSE.RRSE_all_avg0= norm(model_all_avg_err0(:),2) / norm(data(:),2);  %norn 先平方后相加再开根号
-% rmse_avg0 =sqrt(mean(sum(sum(( (model0-data)./max(max(model0)) ).^2))));
-MAPE.MAPE_all_avg0 = mean(sum(abs(model_all_avg_err0),[1,2])./sum(data,[1,2]))*100;%add by shiwei 2021/06/05 from fushuang
-aberrations_avg0 =  paraFit.aberrations;
-aberrations_avg0(:,3)=P0(1:21);
-% [P0_cmp,model0_cmp,err0_cmp] = MLE_FitAbberation_Final_FixPara_Regu_sigma(data,thetainit,paraFit,shared,0.1,0);
-toc
 
-
-end
+% end
 
 % tic
 %[P0,model0,err0] = MLE_FitAbberation_Final_FixPara_Regu_sigma(double(data),thetainit,paraFit,shared,0.1,0);
 % toc
 
-beadStackPos = paraFit.objStageStack+P0(24);
+% beadStackPos = paraFit.objStageStack+P0(24);
 
-[val,ind]=min(abs(beadStackPos));
-
-measuredPSF = data(:,:,ind);
-% measuredPSF = padarray(measuredPSF,[(64-size(measuredPSF,1))/2 (64-size(measuredPSF,2))/2],0,'both');
-modelPSF = model0(:,:,ind);
-% modelPSF = padarray(modelPSF,[(64-size(modelPSF,1))/2 (64-size(modelPSF,2))/2],0,'both');
-
-mOTF=fftshift(ifft2(measuredPSF));% measured OTF
-rOTF=fftshift(ifft2(modelPSF)); % phase retrieved OTF
-tmp=abs(mOTF)./abs(rOTF);
-R = 5; %speed_test 5
-tmp1 = tmp((Npixel+1)/2-R:(Npixel+1)/2+R,(Npixel+1)/2-R:(Npixel+1)/2+R);
-% [I,sigmax,sigmay,bg]=GaussRfit(obj,ratio);
-% x = -64/2:64/2-1;
-x =1:2*R+1;
-Ix = mean(tmp1,1);
-Iy = mean(tmp1,2);
-
-fx = fit(x',Ix','gauss1');
-sigmax = fx.c1/sqrt(2);
-sigmax = max(5,sigmax);
-fy = fit(x',Iy,'gauss1');
-sigmay = fy.c1/sqrt(2);
-sigmay = max(5,sigmay);
+% [val,ind]=min(abs(beadStackPos));
+% 
+% measuredPSF = data(:,:,ind);
+% % measuredPSF = padarray(measuredPSF,[(64-size(measuredPSF,1))/2 (64-size(measuredPSF,2))/2],0,'both');
+% modelPSF = model0(:,:,ind);
+% % modelPSF = padarray(modelPSF,[(64-size(modelPSF,1))/2 (64-size(modelPSF,2))/2],0,'both');
+% 
+% mOTF=fftshift(ifft2(measuredPSF));% measured OTF
+% rOTF=fftshift(ifft2(modelPSF)); % phase retrieved OTF
+% tmp=abs(mOTF)./abs(rOTF);
+% R = 5; %speed_test 5
+% tmp1 = tmp((Npixel+1)/2-R:(Npixel+1)/2+R,(Npixel+1)/2-R:(Npixel+1)/2+R);
+% % [I,sigmax,sigmay,bg]=GaussRfit(obj,ratio);
+% % x = -64/2:64/2-1;
+% x =1:2*R+1;
+% Ix = mean(tmp1,1);
+% Iy = mean(tmp1,2);
+% 
+% fx = fit(x',Ix','gauss1');
+% sigmax = fx.c1/sqrt(2);
+% % sigmax = max(5,sigmax);
+% sigmax = min(20,max(5,sigmax));% modify shiwei 20220514
+% fy = fit(x',Iy,'gauss1');
+% sigmay = fy.c1/sqrt(2);
+% % sigmay = max(5,sigmay);
+% sigmay = min(20,max(5,sigmay));% modify shiwei 20220514
 % I = (fx.a1 + fy.a1)/2;
 % 
 % Ixf = feval(fx,x);
@@ -198,14 +194,29 @@ sigmay = max(5,sigmay);
 % bg = 0;
 
 
-[xx,yy]=meshgrid(-(Npixel-1)/2:(Npixel-1)/2,-(Npixel-1)/2:(Npixel-1)/2);
-X=abs(xx);
-Y=abs(yy);
-fit_im=exp(-X.^2./2./sigmax^2).*exp(-Y.^2./2./sigmay^2);
-tempGauss = abs(fftshift(ifft2(fit_im)));
-tempGauss1 = tempGauss((Npixel+1)/2-2:(Npixel+1)/2+2,(Npixel+1)/2-2:(Npixel+1)/2+2);
-tempGauss1 = tempGauss1/sum(tempGauss1(:));
-% thetainit(1:21)=P0(1:21);
+% [xx,yy]=meshgrid(-(Npixel-1)/2:(Npixel-1)/2,-(Npixel-1)/2:(Npixel-1)/2);
+% X=abs(xx);
+% Y=abs(yy);
+% fit_im=exp(-X.^2./2./sigmax^2).*exp(-Y.^2./2./sigmay^2);
+% tempGauss = abs(fftshift(ifft2(fit_im)));
+% tempGauss1 = tempGauss((Npixel+1)/2-2:(Npixel+1)/2+2,(Npixel+1)/2-2:(Npixel+1)/2+2);
+% tempGauss1 = tempGauss1/sum(tempGauss1(:));
+% % thetainit(1:21)=P0(1:21);
+
+%%
+% calculate the psf gauss directly using Isigma   
+%start add by fushuang 2021/08/21
+% I_sigmax=1/(2*pi*otf_sigmax)*Npixel_otf/ds_step;
+% I_sigmay=1/(2*pi*otf_sigmay)*Npixel_otf/ds_step;
+I_sigmax=psfrescale;
+I_sigmay=psfrescale;
+[x1,y1]=meshgrid( - 2 : 2 );
+gauss_psf=exp(-x1.^2./2./I_sigmax^2).*exp(-y1.^2./2./I_sigmay^2);
+gauss_psf = gauss_psf/sum(gauss_psf,'all');
+% figure;mesh(gauss_psf);title('psf gauss calculated by Isigma');
+ tempGauss1=gauss_psf;
+%end  add by fushuang 2021/08/21
+%%
 
 if 1
     
@@ -247,12 +258,12 @@ paraSim.aberrations(:,3)=P(1:21);
 % paraSim.OTFsigmax = sigmax;
 % paraSim.OTFsigmay = sigmay;
 
-paraSim.OTFsigmax = 0.1;
-paraSim.OTFsigmay = 0.1;
+% paraSim.OTFsigmax = 0.1;
+% paraSim.OTFsigmay = 0.1;
 
-paraSim.Imgsigmax = 1/sigmax/(2*pi/size(measuredPSF,1));
-paraSim.Imgsigmay = 1/sigmay/(2*pi/size(measuredPSF,2));
-sigmaxy_avg=[paraSim.Imgsigmax,paraSim.Imgsigmay];%add by shiwei 20210817
+% paraSim.Imgsigmax = 1/sigmax/(2*pi/size(measuredPSF,1));
+% paraSim.Imgsigmay = 1/sigmay/(2*pi/size(measuredPSF,2));
+% sigmaxy_avg=[paraSim.Imgsigmax,paraSim.Imgsigmay];%add by shiwei 20210817
 % aberr_perc0 = sum(abs(model0-data),[1,2]) ./ sum(data,[1,2]);%add by shiwei 20210601 from fushuang
 % modelP=vectorPSFsimple(paraSim);
 imx(cat(1,data,model,data-model),'Parent',axzernike);
@@ -278,12 +289,19 @@ Waberration1 = Waberration1.*ApertureMask;
 imagesc(axpupil,Waberration1);
 axis(axpupil,'equal');
 axis(axpupil,'tight');
+xlabel(axpupil,'X (pixel)');
+ylabel(axpupil,'Y (pixel)');
+c =colorbar(axpupil);
+c.Label.String ='nm';
+c.Label.FontSize = 14;
 % ax1=axzernike{1};
 % imagesc(ax1,[Waberration0,Waberration1]);
 
 
-bar(axmode,[P0(1:21),P(1:21)]);
-legend(axmode,{'Original','OTF Rescale'});
+bar(axmode,P(1:21),'FaceColor',[0.6350 0.0780 0.1840],'EdgeColor',[0.6350 0.0780 0.1840]);
+xlabel(axmode,'zernike modes');
+ylabel(axmode,'zernike rms value (nm)');
+% legend(axmode,{'Average bead stacks'});
 for k=size(orders1):-1:1
     axn{k}=[num2str(orders1(k,1)) ',' num2str(orders1(k,2))];
 end
