@@ -6,7 +6,9 @@ This code comes with the paper: "Field dependent deep learning enables high-thro
 * For field-dependent aberration map calibration, we tested on Matlab 2020b with CUDA 10.1 on a Windows 10 system.
 * The deep learning part of FD-DeepLoc is based on Python and Pytorch. We recommend conda (https://anaconda.org) to manage the environment and provide a `fd_deeploc_env.yaml` file under the folder `FD-DeepLoc/Field Dependent PSF Learning` to build the conda environment.
 # How to run
-
+A tutorial file `FD-DeepLoc tutorial.pdf` is provided under the main directory, which illustrates the procedures for 
+1. Field-dependent aberration map calibration.
+2. Field-dependent deep-learning localization network (including training and inference examples)
 
 # Contact
 For any questions / comments about this software, please contact [Li Lab](https://faculty.sustech.edu.cn/liym2019/en/).
