@@ -234,8 +234,8 @@ else
     end    
 end
 
-aber_map(:,:,22)= sigmaxy(1);
-aber_map(:,:,23)= sigmaxy(2);
+aber_map(:,:,22)= psfrescale;
+aber_map(:,:,23)= psfrescale;
 save(p.outputfile,'aber_map'); 
 
 cal_par =strrep(p.outputfile,'aber_map.mat','3dcal.mat');
