@@ -9,27 +9,27 @@ clc
 addpath source
 frame_size = 64;  % pixel, the image size
 N_pixels = 27;     % pixel, the psf size of beads
-% frame_N = 200;    % number of frames
 pixel_size = 100; %nm, pixel size of the image
 Nmol = 1;
-Nphotons = 30000 +5000*rand(1,Nmol); %simulate the photons per beads
-bg = 100 + 100*rand(1,Nmol);         %simulate the background of image
+Nphotons = 30000 +5000*rand(1,Nmol); %simulated the photons per beads
+bg = 100 + 100*rand(1,Nmol);         %simulated the background of image
 
 z_depth = 2000;               %nm, the depth of bead stack
 z_step =50;                   %nm, the step of bead stack in each frame
 
-%% hyper parameters for PSF model used for simulate
-paraSim.NA = 1.35;                                                   % numerical aperture of obj             
-paraSim.refmed = 1.34;                                               % refractive index of sample medium
-paraSim.refcov = 1.525;                                              % refractive index of converslip
-paraSim.refimm = 1.406;                                              % refractive index of immersion oil
-paraSim.lambda = 680;                                                % wavelength of emission
-paraSim.objStage0 = -1000;                                                % nm, initial objStage0 position,relative to focus at coverslip
+%% parameters for PSF model used for simulated
+paraSim.NA = 1.35;                                                      % numerical aperture of objective lens             
+paraSim.refmed = 1.34;                                                  % refractive index of sample medium
+paraSim.refcov = 1.525;                                                 % refractive index of converslip
+paraSim.refimm = 1.406;                                                 % refractive index of immersion oil
+paraSim.lambda = 680;                                                   % wavelength of emission
+paraSim.objStage0 = -0;                                              % nm, initial objStage0 position,relative to focus at coverslip
 paraSim.zemit0 = -1*paraSim.refmed/paraSim.refimm*(paraSim.objStage0);  % reference emitter z position, nm, distance of molecule to coverslip
 paraSim.pixelSizeX = pixel_size;                                        % nm, pixel size of the image
 paraSim.pixelSizeY = pixel_size;                                        % nm, pixel size of the image
-paraSim.Npupil = 64;                                                     % sampling at the pupil plane
-paraSim.aberrations = [ 2.0000   -2.0000    0.3706                       %Zernik polynomial coefficients obtained by fitting bead stacks with the actual microscope system
+paraSim.Npupil = 64;                                                    % sampling at the pupil plane
+%simulated zernike polynomial coefficients for an astigmatic PSF
+paraSim.aberrations = [ 2.0000   -2.0000    0.3706                      
                         2.0000    2.0000   72.7186
                         3.0000   -1.0000   19.0738
                         3.0000    1.0000    1.5904
@@ -59,7 +59,6 @@ paraSim.yemit = 0;
 paraSim.zemit = 0;
 paraSim.objStage = 0;
 
-
 z=z_depth/2:-z_step:-z_depth/2;
 stacks_num = length(z);
 PSF_stack =zeros(N_pixels,N_pixels,stacks_num);
@@ -67,18 +66,19 @@ PSF_stack =[];
 for idx_stack = 1:stacks_num
     paraSim.aberrationsParas=[];
     for j = 1:1
-        paraSim.zemit = -((idx_stack-1)*z_step-z_depth/2);
+        paraSim.objStage = -((idx_stack-1)*z_step-z_depth/2);
         paraSim.showAberrationNumber=j;
-        paraSim.aberrationsParas(j,:) = paraSim.aberrations(:,3);
-%         [PSFs, Waberration]=psf_simu2_floatC(paraSim); 
-        [PSFs, Waberration]=psf_gpu_simu2(paraSim); 
+        paraSim.aberrationsParas(j,:) = paraSim.aberrations(:,3); 
+       % GPU simulated
+%         [PSFs, Waberration]=psf_gpu_simu2(paraSim); 
+        % CPU simulated
+        [PSFs, Waberration]=psf_simu2_floatC(paraSim);
     end
     PSFs = PSFs.*Nphotons+bg;  
     PSF_stack(:,:,idx_stack)=PSFs;
-    
 end
-
-%%  plot PSF_stack
+PSF_stack = poissrnd(PSF_stack);
+%%  plot PSF stack 
 
 f = figure
 initPosition = f.Position;
@@ -91,15 +91,14 @@ for k=1:length(PSF_stack)
     set(gca,'FontName','time','FontSize',10,'FontWeight','bold');
     set(sub_title,'FontName','time','FontSize',12,'LineWidth',3,'FontWeight','bold'); 
 end
-% sgtitle('Simulated bead stack');
 
-%% hyper parameters for PSF model used for fit
-paraFit.NA = paraSim.NA;                                                % numerical aperture of obj             
+%%  parameters for PSF model used for fit
+paraFit.NA = paraSim.NA;                                                    % numerical aperture of objective lens             
 paraFit.refmed = paraSim.refmed;                                            % refractive index of sample medium
-paraFit.refcov = paraSim.refcov;                                           % refractive index of converslip
-paraFit.refimm =paraSim. refimm;                                           % refractive index of immersion oil
+paraFit.refcov = paraSim.refcov;                                            % refractive index of converslip
+paraFit.refimm =paraSim. refimm;                                            % refractive index of immersion oil
 paraFit.lambda = paraSim.lambda;                                             % wavelength of emission
-paraFit.zemit0 = paraSim.zemit0;              % reference emitter z position, nm, distance of molecule to coverslip
+paraFit.zemit0 = paraSim.zemit0;                                            % reference emitter z position, nm, distance of molecule to coverslip
 paraFit.objStage0 = paraSim.objStage0;                                            %  nm, initial objStage0 position,relative to focus at coverslip
 paraFit. pixelSizeX = paraSim.pixelSizeX;                                        % nm, pixel size of the image
 paraFit. pixelSizeY = paraSim.pixelSizeX;                                        % nm, pixel size of the image
@@ -107,13 +106,10 @@ paraFit.Npupil =paraSim.Npupil;                                             % sa
 paraFit.sizeX = size(PSF_stack,1);
 paraFit.sizeY = size(PSF_stack,2);
 paraFit.sizeZ = size(PSF_stack,3);
-
+%initializing zernike polynomial coefficients
 paraFit.aberrations = [2,-2,0.0; 2,2,0.0; 3,-1,0.0; 3,1,0.0; 4,0,0.0; 3,-3,0.0; 3,3,0.0; 4,-2,0.0; 4,2,0.0; 5,-1,0.0; 5,1,0.0; 6,0,0.0; 4,-4,0.0; 4,4,0.0;  5,-3,0.0; 5,3,0.0;  6,-2,0.0; 6,2,0.0; 7,1,0.0; 7,-1,0.00; 8,0,0];
 
-% paraFit.aberrations = paraSim.aberrations;
-
 %% initial parameters for fit
-% output parameters order [21aberrations, x, y, z, I, bg]
 Nz = size(PSF_stack,3);
 Npixel = size(PSF_stack,1);
 numAberrations = size(paraFit.aberrations,1);
@@ -121,10 +117,7 @@ shared = [ones(1,numAberrations) 1 1 1 0 0];  % 1 is shared parameters between z
 
 sumShared = sum(shared);
 numparams = 26*Nz-sumShared*(Nz-1);
-
-
 thetainit = zeros(numparams,1);
-
 bg = zeros(1,Nz);
 Nph = zeros(1,Nz);
 x0 = zeros(1,Nz);
@@ -149,7 +142,6 @@ for i = 1:Nz
     y0(i) = sum(sum(YImage.*dTemp))/Nph(i);
     z0(i) = paraSim.zemit/2;%
 end
-
 
 allTheta = zeros(numAberrations+5,Nz);
 allTheta(numAberrations+1,:)=x0';
@@ -190,8 +182,7 @@ end
 zernikecoefsmax = 0.25*paraFit.lambda*ones(numAberrations,1);
 paraFit.maxJump = [zernikecoefsmax',paraFit.pixelSizeX*ones(1,max(Nz*double(shared(numAberrations+1)==0),1)),paraFit.pixelSizeY*ones(1,max(Nz*double(shared(numAberrations+2)==0),1)),500*ones(1,max(Nz*double(shared(numAberrations+3)==0),1)),2*max(Nph(:)).*ones(1,max(Nz*double(shared(numAberrations+4)==0),1)),100*ones(1,max(Nz*double(shared(numAberrations+5)==0),1))];
 
-
-%% fit data
+%% fitting simulated bead stack
 paraFit.numparams = numparams;
 paraFit.numAberrations = numAberrations;
 paraFit.zemitStack = zeros(size(PSF_stack,3),1); % move emitter
@@ -204,7 +195,11 @@ paraFit.Nitermax = 75;
 paraFitCell= struct2cell(paraFit);
 
 tempGauss1 = 0;
+
+% GPU fitting
 [P,model,err] = MLE_FitAbberation_Final_GPU_float(PSF_stack,thetainit,paraFitCell,shared,0.1,tempGauss1);
+% CPU fitting
+% [P,model,err] = MLE_FitAbberation_Final_CPU(PSF_stack,thetainit,paraFitCell,shared,0.1,tempGauss1);
 
 %% plot fitted pupil function
 PupilSize = 1.0;
@@ -233,9 +228,10 @@ ylabel('Y(pixel)') ,xlabel('X(pixel)')
 c_title=colorbar;
 title(c_title,'nm')
 
+%% plot fitted zernike polynomial coefficients
 axMode =axes(figure);
 bar(axMode,[paraSim.aberrations(:,3),P(1:21)]);
-legend(axMode,{'Original','Fitting Result'})
+legend(axMode,{'Simulated','Fitting Result'})
 for k=size(orders):-1:1
     axn{k}=[num2str(orders(k,1)) ',' num2str(orders(k,2))];
 end
