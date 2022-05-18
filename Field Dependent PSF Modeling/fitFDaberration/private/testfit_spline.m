@@ -20,7 +20,7 @@ t=tic;
 % f=figure(134);ax2=gca;hold(ax2,'off')
     for k=1:size(teststack,4)
         if toc(t)>1
-            p.status.String=['fitting test stacks: ' num2str(k/numstack,'%1.2f')];drawnow
+            p.status.String=['fitting bead stacks: ' num2str(k/numstack,'%1.2f')];drawnow
             t=tic;
         end
 %         if isfield(p,'PSF2D') && p.PSF2D

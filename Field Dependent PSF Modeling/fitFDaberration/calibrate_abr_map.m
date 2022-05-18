@@ -163,8 +163,8 @@ for X=1:length(p.xrange)-1
             for k = 1:beads_num
                 p.status.String=['calculate zernike parameters of individual PSFs: ' num2str(k) ' of ' num2str(beads_num)]; drawnow
                 
-                k
-                beadspos{k}
+%                 k
+%                 beadspos{k}
                 
                 if mod(k,100) == 0
                     gpuCount = gpuDeviceCount

@@ -2,15 +2,11 @@ function maps_gauss = zernikecoeffMap(p,beads_zrnikeparam,axmap,axdist)
 pos = beads_zrnikeparam.pos;
 value = beads_zrnikeparam.value_P;
 RRSE1 =beads_zrnikeparam.RRSE.RRSE1;
-%     sigmaxy_avg = beads_zrnikecoeff.sigmaxy_avg;
 std_ref=str2num(beads_zrnikeparam.aberrations_std_set.String);
 mapsmooth_set=str2num(beads_zrnikeparam.mapsmooth_set.String);
 modelrrse_set=str2num(beads_zrnikeparam.modelrrse_set.String);
 localroi_set=str2num(beads_zrnikeparam.localroi_set.String);
 
-%     sigmaxy = beads_zrnikeparam.sigmaxy;
-%     STD_aberrations0 = beads_zrnikeparam.RRSE.STD_aberrations0;
-%     STD_aberrations0_average = mean(STD_aberrations0);                            %每个beads的original泽尼克系数与平均泽尼克系数均方差再取平均值
 value_all = value;
 pos_all = pos;
 beads_num = length(pos);
@@ -28,7 +24,7 @@ end
 
 for j=1:21
 %     j
-    for i = beads_num:-1:1        %倒叙循环是为了防止连续的beads有问题时跳过
+    for i = beads_num:-1:1        %The flashback loop is designed to prevent skipping when successive beads have a problem
         value_indx(pos{i}(1),pos{i}(2))=value{i}(j);     
     end
     value_pos{j} = value_indx;
@@ -40,10 +36,9 @@ for i = 1:beads_num
 %     i
       pos{i} = pos{i}(1:2);
       pos_all{i} = pos_all{i}(1:2);
-%       num_pickup{i} = pos{i};
       for j=1:21
          value_pos_crop=  value_pos{j}(max(pos{i}(1)-xy_roi/2,0)+1:min(pos{i}(1)+xy_roi/2,frame_fov(1)),max(pos{i}(2)-xy_roi/2,0)+1:min(pos{i}(2)+xy_roi/2,frame_fov(2)));
-         value_pos_crop_t = reshape(value_pos_crop, size(value_pos_crop,1)*size(value_pos_crop,2),1);  %把二维数组转换成一维数组
+         value_pos_crop_t = reshape(value_pos_crop, size(value_pos_crop,1)*size(value_pos_crop,2),1);  %To convert a 2D array into a 1D array
          value_pos_crop_mean(j) = mean(value_pos_crop_t,'omitnan');   
          value_pos_crop_std(j) = std(value_pos_crop_t,'omitnan');
       end
@@ -53,18 +48,18 @@ end
 
 for i = beads_num:-1:1
     pos{i} = pos{i}(1:2);
-    if any(transpose(value_all{i})>value_roi_mean{i}+std_ref*value_roi_std{i}) || any(transpose(value_all{i})<value_roi_mean{i}-std_ref*value_roi_std{i}) || RRSE1(i)>modelrrse_set     %mark 过滤拟合不好的beads
+    if any(transpose(value_all{i})>value_roi_mean{i}+std_ref*value_roi_std{i}) || any(transpose(value_all{i})<value_roi_mean{i}-std_ref*value_roi_std{i}) || RRSE1(i)>modelrrse_set     % Filter outlier  beads
         pos{i} = [];
         value{i} = [];
     end
 
 end
-pos(cellfun(@isempty,pos))=[];  %去掉空数据
-value(cellfun(@isempty,value))=[];  %去掉空数据
+pos(cellfun(@isempty,pos))=[];  %Take out the null data
+value(cellfun(@isempty,value))=[];  %Take out the null data
 
 beads_num_filter = length(pos);
 
-for j = 1:21       %前21项为像差系数map，后两项为x和y的sigma用于psf的rescale
+for j = 1:21       
      p.status.String=['calculate zernike coefficient maps of individual PSFs: ' num2str(j) ' of 21']; drawnow
 
     x = zeros(1,beads_num_filter);

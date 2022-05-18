@@ -87,7 +87,6 @@ paraFit.maxJump = [zernikecoefsmax',paraFit.pixelSizeX*ones(1,max(Nz*double(shar
 paraFit.numparams = numparams;
 paraFit.numAberrations = numAberrations;
 paraFit.zemitStack = zeros(size(data,3),1); % move emitter
-% paraFit.objStageStack = 600:-30:600-30*40; %move objStage
 zmax=(paraFit.sizeZ-1)*paraFit.dz/2;
 paraFit.objStageStack=zmax:-paraFit.dz:-zmax;
 
@@ -127,7 +126,6 @@ shared_d=shared.*1;
 
 %%
 % calculate the psf gauss directly using Isigma   
-
 I_sigmax=psfrescale;
 I_sigmay=psfrescale;
 [x1,y1]=meshgrid( - 2 : 2 );
@@ -137,7 +135,6 @@ tempGauss1=gauss_psf;
 %%
    
 %    tic
-%[P_cDouble2,model_cDouble2,err_cDouble2] = MLE_FitAbberation_Final_GPU_Double(data_double,thetainit_d,paraFitCell,shared_d,0.1,tempGauss1);
 [P,model,err] = MLE_FitAbberation_Final_GPU_float(data_double,thetainit_d,paraFitCell,shared_d,0.1,tempGauss1);
 % [P,model,err] = MLE_FitAbberation_Final_FixPara_Regu_sigma2(data,thetainit,paraFit,shared,0.1,tempGauss1);
 model_all_avg_err1= model-data;
