@@ -2,7 +2,7 @@
 This code comes with the paper: "Field dependent deep learning enables high-throughput whole-cell 3D super-resolution imaging".
   
 ![traverse_large_FOV_NPC_ast2_compressed2](https://user-images.githubusercontent.com/67769465/168802700-71ba4e5d-b57a-45b0-a069-c27e110e487e.gif)
-![singlecellnpc1_compressed2](https://user-images.githubusercontent.com/67769465/168812207-5446bb84-e8c5-4f4c-af81-5cf693bcfc06.gif)
+![traverse_large_FOV_mito_ast2 compressed](https://user-images.githubusercontent.com/67769465/168939428-ba6b64db-d855-490b-a174-651dbd663010.gif)
 
 #  Requirements
 * FD-DeepLoc was tested on a workstation equipped with Windows 10 system, 128 GB of memory, an Intel(R) Core(TM) i9-11900K, 3.50GHz CPU, and an NVidia GeForce RTX 3080 GPU with 10 GB of video memory. To use FD-DeepLoc yourself, a computer with CPU memory ≥ 32GB and GPU memory ≥ 8GB is recommended since FD-DeepLoc would process large-FOV SMLM images (usually > 500GB).
