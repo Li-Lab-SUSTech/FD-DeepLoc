@@ -43,8 +43,7 @@ classdef calibrate_abr_map_GUI<handle
             hatitle='left';
             obj.guihandles.handle=handle;
             obj.guihandles.title=uicontrol('style','text','String','Calibrate field dependant aberration from bead stacks. 2022 Li lab, SUSTech','Position',[xpos1,top-vsep,xw*4.5,fieldheight],'FontSize',fontsize-2,'HorizontalAlignment',hatitle,'FontWeight','bold');
-%             obj.guihandles.title=uicontrol('style','text','String','Calibrate field dependant aberration from bead stacks. (c) 2022 Li lab, SUSTech','Position',[xpos1,top-vsep,xw*4.5,fieldheight],'FontSize',fontsize-2,'HorizontalAlignment',hatitle,'FontWeight','bold');
-          
+         
             obj.guihandles.filelist=uicontrol('style','listbox','String','','Position',[xpos1,top-16*vsep,xw*4,vsep*15],'FontSize',fontsize);
             obj.guihandles.filelist.TooltipString='List of image files used for calibration. To change this list, use select camera files';
             

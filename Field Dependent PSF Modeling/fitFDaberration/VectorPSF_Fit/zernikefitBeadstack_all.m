@@ -138,12 +138,12 @@ model_err1= model-data;
 RRSE.RRSE1= norm(model_err1(:),2) / norm(data(:),2);
 
 
-MAPE.MAPE1 = mean(sum(abs(model_err1),[1,2])./sum(data,[1,2]))*100;%add by shiwei 2021/06/05 from fushuang
+MAPE.MAPE1 = mean(sum(abs(model_err1),[1,2])./sum(data,[1,2]))*100;
 model_avg_err1= model-data_avg;
 
 RRSE.RRSE_avg1= norm(model_avg_err1(:),2) / norm(data_avg(:),2);
 
-MAPE.MAPE_avg1 = mean(sum(abs(model_avg_err1),[1,2])./sum(data_avg,[1,2]))*100;%add by shiwei 2021/06/08
+MAPE.MAPE_avg1 = mean(sum(abs(model_avg_err1),[1,2])./sum(data_avg,[1,2]))*100;
 
 
 RRSE.STD_aberrations1 =sqrt(mean((P(1:21)-aberrations_avg1(:,3)).^2));

@@ -164,16 +164,14 @@ for X=1:length(p.xrange)-1
                 p.status.String=['calculate zernike parameters of individual PSFs: ' num2str(k) ' of ' num2str(beads_num)]; drawnow
                 
 %                 k
-%                 beadspos{k}
-                
+%                 beadspos{k}               
                 if mod(k,100) == 0
-                    gpuCount = gpuDeviceCount
+                    gpuCount = gpuDeviceCount;
                     for i=1:gpuCount
                         gpu = gpuDevice(i)
-                        gpu.AvailableMemory
+                        gpu.AvailableMemory;
                     end
                 end
-
                 stack = stack_all(:,:,:,k);
                 beadspos_single = beadspos{k};
                 mp=ceil(size(stack,1)/2);
@@ -187,8 +185,8 @@ for X=1:length(p.xrange)-1
 
                 stack_flter=logical(sum(sum(stack)));
                 z0_shift = sum(zcrop.*stack_flter(1,:))*p.dz;
-                stack = stack(:,:,stack_flter);%add by shiwei 2021/08/16 stack中滤除全为0的帧
-                stack_avg_single = stack_avg(:,:,logical(sum(sum(stack))));%add by shiwei 2021/08/16 stack中滤除全为0的帧
+                stack = stack(:,:,stack_flter);%filter out frames with all zeros in stack
+                stack_avg_single = stack_avg(:,:,logical(sum(sum(stack))));%filter out frames with all zeros in stack
                 %arbitrary
                 stack=stack*1000; %random photons, before normalized to maximum pixel
                 p.zernikefit.dz=p.dz;
