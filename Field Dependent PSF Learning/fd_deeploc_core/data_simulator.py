@@ -131,6 +131,8 @@ class DataSimulator(PSF_VECTOR_GPU):
             bg_photons = (self.simulation_pars['backg'] - self.simulation_pars['baseline']) \
                          / self.simulation_pars['em_gain'] * self.simulation_pars['e_per_adu'] \
                          / self.simulation_pars['qe']
+            if bg_photons<0:
+                print('converted bg_photons is less than 0, please check the parameters setting!')
 
             if self.simulation_pars['perlin_noise']:
                 size_x, size_y = imgs_sim.shape[-2], imgs_sim.shape[-1]
@@ -167,6 +169,8 @@ class DataSimulator(PSF_VECTOR_GPU):
         elif self.simulation_pars['camera'] == 'sCMOS':
             bg_photons = (self.simulation_pars['backg'] - self.simulation_pars['baseline']) \
                          * self.simulation_pars['e_per_adu'] / self.simulation_pars['qe']
+            if bg_photons<0:
+                print('converted bg_photons is less than 0, please check the parameters setting!')
 
             if self.simulation_pars['perlin_noise']:
                 size_x, size_y = imgs_sim.shape[-2], imgs_sim.shape[-1]

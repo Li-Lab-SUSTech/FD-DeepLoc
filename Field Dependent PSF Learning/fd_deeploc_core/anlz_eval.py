@@ -1,3 +1,4 @@
+import numpy as np
 import torch.nn.functional as func
 from torch.cuda.amp import autocast as autocast
 from tqdm import tqdm
@@ -1300,3 +1301,246 @@ def check_specific_frame_output(plot_num, model, image_path, eval_csv=None,
                                                           win_size=win_size, padding=padding)
     plot_sample_predictions(model, plot_infs=plot_data, eval_csv=eval_csv, plot_num=plot_num,
                             fov_size=fov_size, pixel_size=pixel_size)
+
+
+def check_local_CRLB(model, test_pos, test_photons, test_bg, Nmol=25):
+    """
+    Check the CRLB of the local PSF at given positions
+    Parameters
+    ----------
+    model:
+        FD-DeepLoc model
+    test_pos:
+        Position (x,y) where the PSF CRLB will be computed and checked
+    test_photons:
+        Number of signal photons used to compute CRLB
+    test_bg:
+        Number of background photons used to compute CRLB
+    Nmol:
+        Number of sampled z positions, which are uniformly distributed in the training z range
+    Returns
+    -------
+
+    """
+    # set PSF parameters
+    NA = model.dat_generator.psf_pars['NA']
+    refmed = model.dat_generator.psf_pars['refmed']
+    refcov = model.dat_generator.psf_pars['refcov']
+    refimm = model.dat_generator.psf_pars['refimm']
+    lambda_fs = model.dat_generator.psf_pars['lambda']
+    objstage0 = model.dat_generator.psf_pars['initial_obj_stage']
+    zemit0 = -1 * refmed / refimm * objstage0
+    pixel_size_xy = list(reversed(model.dat_generator.psf_pars['pixel_size_xy']))
+    Npupil = 64
+    zernike_aber = np.array([2, -2, 0, 2, 2, 0, 3, -1, 0, 3, 1, 0, 4, 0, 0, 3, -3, 0, 3, 3, 0,
+                             4, -2, 0, 4, 2, 0, 5, -1, 0, 5, 1, 0, 6, 0, 0, 4, -4, 0, 4, 4, 0,
+                             5, -3, 0, 5, 3, 0, 6, -2, 0, 6, 2, 0, 7, 1, 0, 7, -1, 0, 8, 0, 0],
+                            dtype=np.float32).reshape([21, 3])
+    zernike_aber[:, 2] = model.dat_generator.aber_map[test_pos[1], test_pos[0], 0:21] * model.dat_generator.psf_pars[
+        'lambda']
+    Npixels = model.dat_generator.psf_pars['psf_size']
+    Nphotons = test_photons * np.ones(Nmol)
+    bg = test_bg * np.ones(Nmol)
+    xemit = 0 * np.ones(Nmol)
+    yemit = 0 * np.ones(Nmol)
+    zemit = 1 * np.linspace(-model.dat_generator.psf_pars['z_scale'], model.dat_generator.psf_pars['z_scale'], Nmol)
+    objstage = 0 * np.linspace(-1000, 1000, Nmol)
+    otf_rescale = [model.dat_generator.aber_map[test_pos[1], test_pos[0], 21],
+                   model.dat_generator.aber_map[test_pos[1], test_pos[0], 22]]
+
+    psf_pars = {'NA': NA, 'refmed': refmed, 'refcov': refcov, 'refimm': refimm, 'lambda': lambda_fs,
+                'pixel_size_xy': pixel_size_xy, 'Npupil': Npupil, 'zernike_aber': zernike_aber, 'Npixels': Npixels,
+                'Nphotons': Nphotons, 'bg': bg, 'objstage0': objstage0, 'zemit0': zemit0, 'objstage': objstage,
+                'xemit': xemit, 'yemit': yemit, 'zemit': zemit, 'otf_rescale': otf_rescale}
+
+    # instantiate the PSF model
+    PSF_torch = FreeDipolePSF_torch(psf_pars, req_grad=False)
+    data_torch = PSF_torch.gen_psf()
+
+    # show PSFs
+    print('look PSF model at this position', test_pos)
+    plt.figure(constrained_layout=True)
+    for j in range(Nmol):
+        plt.subplot(int(np.sqrt(Nmol)), int(np.sqrt(Nmol)), j + 1)
+        plt.imshow(cpu(data_torch)[j])
+        plt.title(str(np.round(zemit[j])) + ' nm')
+    plt.show()
+
+    # calculate CRLB
+    x_crlb, y_crlb, z_crlb, model_torch = PSF_torch.cal_crlb()
+    x_crlb_np = x_crlb.detach().cpu().numpy()
+    y_crlb_np = y_crlb.detach().cpu().numpy()
+    z_crlb_np = z_crlb.detach().cpu().numpy()
+    print('average 3D CRLB is:', np.sum(x_crlb_np ** 2 + y_crlb_np ** 2 + z_crlb_np ** 2) / PSF_torch.Nmol)
+    plt.figure(constrained_layout=True)
+    plt.plot(zemit, x_crlb_np, zemit, y_crlb_np, zemit, z_crlb_np)
+    plt.legend(('$CRLB_y^{1/2}$', '$CRLB_x^{1/2}$', '$CRLB_z^{1/2}$'))
+    plt.xlim([np.min(zemit), np.max(zemit)])
+    plt.show()
+
+
+def test_local_CRLB(model, test_pos, test_photons, test_bg, Nmol=25, use_train_cam=False, test_num=3000):
+    """
+
+    Compare the CRLB of the local PSF at given positions with the RMSE of the network prediction
+    Parameters
+    ----------
+    model:
+        FD-DeepLoc model
+    test_pos:
+        Position (x,y) where the PSF CRLB will be computed and checked
+    test_photons:
+        Number of signal photons used to compute CRLB
+    test_bg:
+        Number of background photons used to compute CRLB
+    Nmol:
+        Number of sampled z positions, which are uniformly distributed in the training z range
+    use_train_cam:
+        If true, the single-emitter test set will be simulated using the camera noise of training
+        (e.g., qe, readout noise, analog-to-digital conversion factor). Otherwise only poisson noise will be added.
+    test_num:
+        Number of random PSFs at each sampled z position, the total number of test set is test_num*Nmol.
+        The xy positions for each single emitter are random in the center two pixel, the z position is random in
+        a step range (z_range/(Nmol-1)) around each z position.
+    Returns
+    -------
+
+    """
+    print('compare with PSF CRLB at this position', test_pos)
+
+    # set PSF parameters
+    NA = model.dat_generator.psf_pars['NA']
+    refmed = model.dat_generator.psf_pars['refmed']
+    refcov = model.dat_generator.psf_pars['refcov']
+    refimm = model.dat_generator.psf_pars['refimm']
+    lambda_fs = model.dat_generator.psf_pars['lambda']
+    objstage0 = model.dat_generator.psf_pars['initial_obj_stage']
+    zemit0 = -1 * refmed / refimm * objstage0
+    pixel_size_xy = list(reversed(model.dat_generator.psf_pars['pixel_size_xy']))
+    Npupil = 64
+    zernike_aber = np.array([2, -2, 0, 2, 2, 0, 3, -1, 0, 3, 1, 0, 4, 0, 0, 3, -3, 0, 3, 3, 0,
+                             4, -2, 0, 4, 2, 0, 5, -1, 0, 5, 1, 0, 6, 0, 0, 4, -4, 0, 4, 4, 0,
+                             5, -3, 0, 5, 3, 0, 6, -2, 0, 6, 2, 0, 7, 1, 0, 7, -1, 0, 8, 0, 0],
+                            dtype=np.float32).reshape([21, 3])
+    zernike_aber[:, 2] = model.dat_generator.aber_map[test_pos[1], test_pos[0], 0:21] * model.dat_generator.psf_pars[
+        'lambda']
+    Npixels = model.dat_generator.psf_pars['psf_size']
+    Nphotons = test_photons * np.ones(Nmol)
+    bg = test_bg * np.ones(Nmol)
+    xemit = 0 * np.ones(Nmol)
+    yemit = 0 * np.ones(Nmol)
+    zemit = 1 * np.linspace(-model.dat_generator.psf_pars['z_scale'], model.dat_generator.psf_pars['z_scale'], Nmol)
+    objstage = 0 * np.linspace(-1000, 1000, Nmol)
+    otf_rescale = [model.dat_generator.aber_map[test_pos[1], test_pos[0], 21],
+                   model.dat_generator.aber_map[test_pos[1], test_pos[0], 22]]
+
+    psf_pars = {'NA': NA, 'refmed': refmed, 'refcov': refcov, 'refimm': refimm, 'lambda': lambda_fs,
+                'pixel_size_xy': pixel_size_xy, 'Npupil': Npupil, 'zernike_aber': zernike_aber, 'Npixels': Npixels,
+                'Nphotons': Nphotons, 'bg': bg, 'objstage0': objstage0, 'zemit0': zemit0, 'objstage': objstage,
+                'xemit': xemit, 'yemit': yemit, 'zemit': zemit, 'otf_rescale': otf_rescale}
+
+    # instantiate the PSF model
+    PSF_torch = FreeDipolePSF_torch(psf_pars, req_grad=False)
+    # data_torch = PSF_torch.gen_psf()
+    #
+    # # show PSFs
+    # print('look PSF model at this position')
+    # plt.figure(constrained_layout=True)
+    # for j in range(Nmol):
+    #     plt.subplot(int(np.sqrt(Nmol)), int(np.sqrt(Nmol)), j + 1)
+    #     plt.imshow(cpu(data_torch)[j])
+    #     plt.title(str(np.round(zemit[j])) + ' nm')
+    # plt.show()
+
+    # calculate CRLB
+    x_crlb, y_crlb, z_crlb, model_torch = PSF_torch.cal_crlb()
+    x_crlb_np = x_crlb.detach().cpu().numpy()
+    y_crlb_np = y_crlb.detach().cpu().numpy()
+    z_crlb_np = z_crlb.detach().cpu().numpy()
+    print('average 3D CRLB is:', np.sum(x_crlb_np ** 2 + y_crlb_np ** 2 + z_crlb_np ** 2) / PSF_torch.Nmol)
+    # plt.figure(constrained_layout=True)
+    # plt.plot(zemit, x_crlb_np, zemit, y_crlb_np, zemit, z_crlb_np)
+    # plt.legend(('$CRLB_y^{1/2}$', '$CRLB_x^{1/2}$', '$CRLB_z^{1/2}$'))
+    # plt.xlim([np.min(zemit), np.max(zemit)])
+    # plt.show()
+
+
+    # generate test single emitter set for CRLB comparison
+    oldzemit = zemit
+    dz = np.abs(oldzemit[2] - oldzemit[1])
+    data_buffer = np.zeros([1, Npixels, Npixels])
+    ground_truth = []
+    frame_count = 1
+    print('simulating single-emitter images for CRLB test')
+    for i in range(test_num):
+        PSF_torch.xemit = gpu((np.ones(Nmol) - 2 * np.random.rand(1)) * pixel_size_xy[0])  # nm
+        PSF_torch.yemit = gpu((np.ones(Nmol) - 2 * np.random.rand(1)) * pixel_size_xy[1])  # nm
+        PSF_torch.zemit = gpu(oldzemit + (np.ones(Nmol) - 2 * np.random.rand(1)) * (dz / 2 - 1))  # nm
+
+        for j in range(Nmol):
+            ground_truth.append([frame_count, frame_count,
+                                 cpu(PSF_torch.yemit[j]) + Npixels / 2 * pixel_size_xy[1],
+                                 cpu(PSF_torch.xemit[j]) + Npixels / 2 * pixel_size_xy[0],
+                                 cpu(PSF_torch.zemit[j]) + 0, Nphotons[j]])
+            frame_count += 1
+
+        if use_train_cam:
+            data_model = PSF_torch.gen_psf() * PSF_torch.Nphotons
+            data_tmp = cpu(model.dat_generator.sim_noise(data_model))
+        else:
+            data_model = PSF_torch.gen_psf() * PSF_torch.Nphotons + PSF_torch.bg
+            data_tmp = np.random.poisson(cpu(data_model))
+
+        data_buffer = np.concatenate((data_buffer, data_tmp), axis=0)
+
+        print('{}{}{}{}{}{}'.format('\r', 'simulated ', (i + 1) * Nmol, '/', test_num * Nmol, ' images'), end='')
+
+    data_buffer = data_buffer[1:]
+
+    # show test data
+    print('\nexample single-emitter data for CRLB test')
+    plt.figure(constrained_layout=True)
+    for j in range(Nmol):
+        plt.subplot(int(np.sqrt(Nmol)), int(np.sqrt(Nmol)), j + 1)
+        plt.imshow(data_buffer[j])
+        plt.title(str(np.round(ground_truth[j][4])) + ' nm')
+    plt.show()
+
+    print('start inferring')
+    # compare network's prediction with CRLB
+    preds_raw, n_per_img, _ = recognition(model=model, eval_imgs_all=data_buffer,
+                                          batch_size=model.evaluation_pars['batch_size'], use_tqdm=True,
+                                          nms=True, candi_thre=0.3, nms_thre=0.7, rescale_xy=False,
+                                          pix_nm=model.dat_generator.psf_pars['pixel_size_xy'],
+                                          plot_num=None,
+                                          start_field_pos=[test_pos[0] - np.floor(Npixels / 2),
+                                                           test_pos[1] - np.floor(Npixels / 2)],
+                                          stack_interval=200000, divide_and_conquer=False,
+                                          win_size=model.dat_generator.simulation_pars['train_size'],
+                                          padding=True)
+
+    print('start computing evaluation metrics')
+    match_dict, matches = assess(test_frame_nbr=data_buffer.shape[0], test_csv=ground_truth, pred_inp=preds_raw,
+                                 tolerance=250,
+                                 border=450, print_res=True, min_int=False, tolerance_ax=500, segmented=False)
+
+    rmse_xyz = np.zeros([3, Nmol])
+    for i in range(Nmol):
+        z = zemit[i]
+        ind = np.where(((z - dz / 2) < matches[:, 2]) & (matches[:, 2] < (z + dz / 2)))
+        tmp = np.squeeze(matches[ind, :])
+        if tmp.shape[0]:
+            rmse_xyz[0, i] = np.sqrt(np.mean(np.square(tmp[:, 0] - tmp[:, 4])))
+            rmse_xyz[1, i] = np.sqrt(np.mean(np.square(tmp[:, 1] - tmp[:, 5])))
+            rmse_xyz[2, i] = np.sqrt(np.mean(np.square(tmp[:, 2] - tmp[:, 6])))
+
+    print('plot the RMSE of network prediction vs CRLB')
+    plt.figure(constrained_layout=True)
+    plt.plot(zemit, x_crlb_np, zemit, y_crlb_np, zemit, z_crlb_np)
+    plt.scatter(zemit, rmse_xyz[1, :])
+    plt.scatter(zemit, rmse_xyz[0, :])
+    plt.scatter(zemit, rmse_xyz[2, :])
+    plt.legend(('$CRLB_y^{1/2}$', '$CRLB_x^{1/2}$', '$CRLB_z^{1/2}$', '$RMSE_y$', '$RMSE_x$', '$RMSE_z$'), ncol=2,
+               loc='upper center')
+    plt.xlim([np.min(zemit), np.max(zemit)])
+    plt.show()
