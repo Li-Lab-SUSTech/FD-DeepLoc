@@ -135,7 +135,11 @@ tempGauss1=gauss_psf;
 %%
    
 %    tic
-[P,model,err] = MLE_FitAbberation_Final_GPU_float(data_double,thetainit_d,paraFitCell,shared_d,0.1,tempGauss1);
+if canUseGPU()
+    [P,model,~] = MLE_FitAbberation_Final_GPU_float(data_double,thetainit_d,paraFitCell,shared_d,0.1,tempGauss1);
+else
+    [P,model,~] = MLE_FitAbberation_Final_CPU(data_double,thetainit_d,paraFitCell,shared_d,0.1,tempGauss1);
+end
 % [P,model,err] = MLE_FitAbberation_Final_FixPara_Regu_sigma2(data,thetainit,paraFit,shared,0.1,tempGauss1);
 model_all_avg_err1= model-data;
 RRSE.RRSE_all_avg1= norm(model_all_avg_err1(:),2) / norm(data(:),2);
