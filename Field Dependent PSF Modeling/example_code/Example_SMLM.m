@@ -196,11 +196,15 @@ paraFitCell= struct2cell(paraFit);
 
 tempGauss1 = 0;
 
-% GPU fitting
-[P,model,err] = MLE_FitAbberation_Final_GPU_float(PSF_stack,thetainit,paraFitCell,shared,0.1,tempGauss1);
-% CPU fitting
-% [P,model,err] = MLE_FitAbberation_Final_CPU(PSF_stack,thetainit,paraFitCell,shared,0.1,tempGauss1);
 
+% GPU fitting
+if canUseGPU()
+    [P,model,err] = MLE_FitAbberation_Final_GPU_float(PSF_stack,thetainit,paraFitCell,shared,0.1,tempGauss1);
+else
+    % CPU fitting
+    [P,model,err] = MLE_FitAbberation_Final_CPU(PSF_stack,thetainit,paraFitCell,shared,0.1,tempGauss1);
+end
+    
 %% plot fitted pupil function
 PupilSize = 1.0;
 Npupil = paraFit.Npupil;
