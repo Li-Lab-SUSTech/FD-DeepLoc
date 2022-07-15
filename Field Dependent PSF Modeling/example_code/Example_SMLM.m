@@ -198,7 +198,7 @@ tempGauss1 = 0;
 
 
 % GPU fitting
-if canUseGPU()
+if gpuDeviceCount>0
     [P,model,err] = MLE_FitAbberation_Final_GPU_float(PSF_stack,thetainit,paraFitCell,shared,0.1,tempGauss1);
 else
     % CPU fitting
