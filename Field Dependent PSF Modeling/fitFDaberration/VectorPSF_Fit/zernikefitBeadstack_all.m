@@ -131,7 +131,7 @@ gauss_psf = gauss_psf/sum(gauss_psf,'all');
 
 tempGauss1=gauss_psf;
 
-if canUseGPU()
+if gpuDeviceCount>0
     [P,model,~] = MLE_FitAbberation_Final_GPU_float(data_double,thetainit_d,paraFitCell,shared_d,0.1,tempGauss1);
 else
     [P,model,~] = MLE_FitAbberation_Final_CPU(data_double,thetainit_d,paraFitCell,shared_d,0.1,tempGauss1);
