@@ -1,4 +1,4 @@
-name: fd_deeploc_test
+name: fd_deeploc
 channels:
   - pytorch
   - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
