@@ -14,8 +14,15 @@ Single-molecule localization microscopy (SMLM) in a typical wide-field setup has
 * CUDA (>=10.1, https://developer.nvidia.com/cuda-toolkit-archive) is required for fast GPU-based PSF simulation and PSF fitting.
 * For field-dependent aberration map calibration, we tested on Matlab 2020b with CUDA 10.1 on a Windows 10 system.
 * The deep learning part of FD-DeepLoc is based on Python and Pytorch. We recommend conda (https://anaconda.org) to manage the environment and provide a `fd_deeploc_env.yaml` file under the folder `FD-DeepLoc/Field Dependent PSF Learning` to build the conda environment.
+
+# Installation
+1. Download this repository (or clone it using git).
+2. Open Anaconda Prompt and change the current directory to `FD-DeepLoc/Field Dependent PSF Learning`.
+3. Use the command `conda env create -f fd_deeploc_env.yaml` to build the FD-DeepLoc environment, it may take several minutes.
+4. Activate the environment using the command `conda activate fd_deeploc`, then check the demo using the command `jupyter notebook`.
+
 # How to run
-A tutorial file `FD-DeepLoc tutorial.pdf` is provided under the main directory, which illustrates the procedures for 
+A detailed tutorial file `FD-DeepLoc tutorial.pdf` is provided under the main directory, which illustrates the procedures for 
 1. Field-dependent aberration map calibration.
 2. Field-dependent deep-learning localization network (including training and inference examples)
 
