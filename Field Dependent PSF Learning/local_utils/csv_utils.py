@@ -1,7 +1,7 @@
 from numpy import cross, eye, dot
 import numpy as np
 import csv
-from theano import config
+# from theano import config
 import pandas as pd
 
 
