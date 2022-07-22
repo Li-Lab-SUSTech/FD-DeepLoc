@@ -20,6 +20,7 @@ Single-molecule localization microscopy (SMLM) in a typical wide-field setup has
 2. Open Anaconda Prompt and change the current directory to `FD-DeepLoc/Field Dependent PSF Learning`.
 3. Use the command `conda env create -f fd_deeploc_env.yaml` to build the FD-DeepLoc environment, it may take several minutes.
 4. Activate the environment using the command `conda activate fd_deeploc`, then check the demo using the command `jupyter notebook`.
+5. The example bead stacks files for field-dependent aberration map calibration and network analysis example data can be found at: https://zenodo.org/record/6547064#.YoRrPKhByUk
 
 # How to run
 A detailed tutorial file `FD-DeepLoc tutorial.pdf` is provided under the main directory, which illustrates the procedures for 
