@@ -126,7 +126,7 @@ class DataSimulator(PSF_VECTOR_GPU):
 
         return imgs_sim
 
-    def sim_noise(self, imgs_sim, add_noise=True):
+    def sim_noise(self, imgs_sim, field_xy, add_noise=True):
         if self.simulation_pars['camera'] == 'EMCCD':
             bg_photons = (self.simulation_pars['backg'] - self.simulation_pars['baseline']) \
                          / self.simulation_pars['em_gain'] * self.simulation_pars['e_per_adu'] \
@@ -160,8 +160,12 @@ class DataSimulator(PSF_VECTOR_GPU):
 
                 imgs_sim = torch.distributions.Gamma(imgs_sim, 1 / self.simulation_pars['em_gain']).sample()
 
+                if type(self.simulation_pars['sig_read']) == np.ndarray:
+                    RN = gpu(self.simulation_pars['sig_read'][field_xy[2]:field_xy[3] + 1, field_xy[0]:field_xy[1] + 1])
+                else:
+                    RN = self.simulation_pars['sig_read']
                 zeros = torch.zeros_like(imgs_sim)
-                read_out_noise = torch.distributions.Normal(zeros, zeros + self.simulation_pars['sig_read']).sample()
+                read_out_noise = torch.distributions.Normal(zeros, zeros + RN).sample()
 
                 imgs_sim = imgs_sim + read_out_noise
                 imgs_sim = imgs_sim / self.simulation_pars['e_per_adu'] + self.simulation_pars['baseline']
@@ -196,8 +200,12 @@ class DataSimulator(PSF_VECTOR_GPU):
                 imgs_sim = torch.distributions.Poisson(
                     imgs_sim * self.simulation_pars['qe'] + self.simulation_pars['spurious_c']).sample()
 
+                if type(self.simulation_pars['sig_read']) == np.ndarray:
+                    RN = gpu(self.simulation_pars['sig_read'][field_xy[2]:field_xy[3] + 1, field_xy[0]:field_xy[1] + 1])
+                else:
+                    RN = self.simulation_pars['sig_read']
                 zeros = torch.zeros_like(imgs_sim)
-                read_out_noise = torch.distributions.Normal(zeros, zeros + self.simulation_pars['sig_read']).sample()
+                read_out_noise = torch.distributions.Normal(zeros, zeros + RN).sample()
 
                 imgs_sim = imgs_sim + read_out_noise
                 imgs_sim = imgs_sim / self.simulation_pars['e_per_adu'] + self.simulation_pars['baseline']
@@ -330,7 +338,7 @@ class DataSimulator(PSF_VECTOR_GPU):
         # add_noise, bg is actually the normalized un-noised PSF image
         psf_imgs_gt = imgs_sim.clone() / self.psf_pars['ph_scale'] * 10
         psf_imgs_gt = psf_imgs_gt[:, 1] if local_context else psf_imgs_gt[:, 0]
-        imgs_sim = self.sim_noise(imgs_sim)
+        imgs_sim = self.sim_noise(imgs_sim, field_xy)
 
         # only return the ground truth with photon>threshold,
         if photon_filt:

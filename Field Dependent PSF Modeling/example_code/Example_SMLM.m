@@ -70,9 +70,9 @@ for idx_stack = 1:stacks_num
         paraSim.showAberrationNumber=j;
         paraSim.aberrationsParas(j,:) = paraSim.aberrations(:,3); 
        % GPU simulated
-%         [PSFs, Waberration]=psf_gpu_simu2(paraSim); 
+        [PSFs, Waberration]=psf_gpu_simu2(paraSim); 
         % CPU simulated
-        [PSFs, Waberration]=psf_simu2_floatC(paraSim);
+%         [PSFs, Waberration]=psf_simu2_floatC(paraSim);
     end
     PSFs = PSFs.*Nphotons+bg;  
     PSF_stack(:,:,idx_stack)=PSFs;
