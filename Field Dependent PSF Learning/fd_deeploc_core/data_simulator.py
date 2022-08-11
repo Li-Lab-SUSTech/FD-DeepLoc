@@ -161,7 +161,7 @@ class DataSimulator(PSF_VECTOR_GPU):
                 imgs_sim = torch.distributions.Gamma(imgs_sim, 1 / self.simulation_pars['em_gain']).sample()
 
                 if type(self.simulation_pars['sig_read']) == np.ndarray:
-                    RN = gpu(self.simulation_pars['sig_read'][field_xy[2]:field_xy[3] + 1, field_xy[0]:field_xy[1] + 1])
+                    RN = gpu(self.simulation_pars['sig_read'][field_xy[2]:field_xy[3] + 1, field_xy[0]:field_xy[1] + 1]+1e-6)
                 else:
                     RN = self.simulation_pars['sig_read']
                 zeros = torch.zeros_like(imgs_sim)
@@ -201,7 +201,7 @@ class DataSimulator(PSF_VECTOR_GPU):
                     imgs_sim * self.simulation_pars['qe'] + self.simulation_pars['spurious_c']).sample()
 
                 if type(self.simulation_pars['sig_read']) == np.ndarray:
-                    RN = gpu(self.simulation_pars['sig_read'][field_xy[2]:field_xy[3] + 1, field_xy[0]:field_xy[1] + 1])
+                    RN = gpu(self.simulation_pars['sig_read'][field_xy[2]:field_xy[3] + 1, field_xy[0]:field_xy[1] + 1]+1e-6)
                 else:
                     RN = self.simulation_pars['sig_read']
                 zeros = torch.zeros_like(imgs_sim)
