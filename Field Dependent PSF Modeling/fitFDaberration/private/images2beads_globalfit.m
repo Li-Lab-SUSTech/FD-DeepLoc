@@ -10,21 +10,6 @@ filelist=p.filelist;
 b=[];
 ht=uitab(p.tabgroup,'Title','Files');
 tg=uitabgroup(ht);
-% is4pi=contains(p.modality,'4Pi');
-
-% if p.isglobalfit 
-%    if ischar(p.Tfile)%extend later to 4Pi
-%         l=load(p.Tfile);
-%         transform=l.transformation;
-%    else
-%        transform=p.Tfile;
-%    end
-%     p.transformation=transform;
-%     p.mirror=transform.info{2}.mirror;
-% %     p.mirror=contains(transform.tinfo.mirror.targetmirror,'up-down')|contains(transform.tinfo.mirror.targetmirror,'left-right');
-% else
-%     p.mirror=false;
-% end
 p.mirror=false;
 p.multifile=false;
 for k=1:length(filelist)
@@ -47,31 +32,6 @@ for k=1:length(filelist)
         p.roi2=p.roi;
         imstack2=imstack;
     end
-%     size(imstack)
-%     if is4pi
-%         if ~isempty(settings3D)
-%             p.settings_3D=settings3D;
-%             p.settings_3D.file='multifile';
-%         end
-%         if isfield(p,'settings_3D') && ~isempty(p.settings_3D) %calibration file: cut out and mirror already here!
-%             imstack=cutoutchannels(imstack,p.settings_3D);
-%             imstack2=cutoutchannels(imstack2,p.settings_3D);
-%             p.roi{k}=[0 0 size(imstack,1) size(imstack,2)]; %check x,y
-%         else
-%             disp('no  settings_3D found. Use default. Specify settings file?')
-%             wx=size(imstack,2)/4;wy=size(imstack,1);
-%             p.settings_3D=struct('y4pi',[0 0 0 0],'x4pi',[0 wx 2*wx 3*wx], 'width4pi',wx,'height4pi',wy,'mirror4pi',[0 0 0 0],'pixelsize_nm',100,'offset',100,'conversion',0.5);
-%         end
-%     end
-%    % em mirror goes to readbeadimages, also to take care of the roi 
-% %     if p.emgain
-% %         imstack=imstack(:,end:-1:1,:);
-% %     end
-       
-%     if isfield(p,'framerangeuse')
-%         imstack=imstack(:,:,p.framerangeuse(1):p.framerangeuse(end));
-%         imstack2=imstack2(:,:,p.framerangeuse(1):p.framerangeuse(end));
-%     end
     
     imstack=imstack-min(imstack(:)); %fast fix for offset;
     imstack2=imstack2-min(imstack2(:)); %fast fix for offset;
@@ -146,54 +106,13 @@ for k=1:length(filelist)
     end 
     
   
-%     if p.isglobalfit
-%         %calculate in nm on chip (reference for transformation)
-%         maximanm=(maxima(:,1:2)+p.roi{k}([1 2]));
-%         
-%         if strcmp(transform.unit,'pixel')
-%             pixfac=[1 1];
-%             pixfac2=[1 1];
-%         else
-%             pixfac=[p.pixelsize{k}(1)*1000 p.pixelsize{k}(end)*1000];
-%             pixfac2=[p.pixelsize2{k}(1)*1000 p.pixelsize2{k}(end)*1000];
-%         end
-%             maximanm(:,1)=maximanm(:,1)*pixfac(1);
-%             maximanm(:,2)=maximanm(:,2)*pixfac(end);
-% 
-%         %transform reference to target
-% 
-% %             indref=transform.getRef(maximanm(:,1),maximanm(:,2));
-%             indref=transform.getPart(1,maximanm(:,1:2));
-%             maximaref=maxima(indref,:);
-%             xy=transform.transformToTarget(2,maximanm(indref,1:2));
-% %             [x,y]=transform.transformCoordinatesFwd(maximanm(indref,1),maximanm(indref,2));
-%         %     [x,y]=transform.transformCoordinatesFwd(maximanm(indref,2),maximanm(indref,1));
-% 
-%             maximatargetf=[];
-%             maximatargetf(:,1)=xy(:,1)/pixfac2(1)-p.roi2{k}(1); %now on target chip: use roi2
-%             maximatargetf(:,2)=xy(:,2)/pixfac2(end)-p.roi2{k}(2);
-%     %     maximatargetf(:,2)=x/p.fitFDApos.pixelsize{k}(1)/1000-p.fitFDApos.roi{k}(1);
-%     %     maximatargetf(:,1)=y/p.fitFDApos.pixelsize{k}(end)/1000-p.fitFDApos.roi{k}(2);
-% 
-% 
-%         if 0 %for testing
-%             maximatargetf(:,1)=maximatargetf(:,1)+1;
-%             maximatargetf(:,2)=maximatargetf(:,2)+0.5;
-%         maximatargetfm(:,1)=maximatargetf(:,1)-0.1+2;
-%         maximatargetfm(:,2)=maximatargetf(:,2)+0.1;
-%         maximatar=round(maximatargetfm);
-%         else 
-%             maximatar=round(maximatargetf);
-%         end
-%         dxy=maximatargetf-maximatar;       
-          
-%     else
-        indgoodr=maxima(:,1)>p.xrange(1)&maxima(:,1)<p.xrange(end)&maxima(:,2)>p.yrange(1)&maxima(:,2)<p.yrange(end);
-        maxima=maxima(indgoodr,:);
+
+    indgoodr=maxima(:,1)>p.xrange(1)&maxima(:,1)<p.xrange(end)&maxima(:,2)>p.yrange(1)&maxima(:,2)<p.yrange(end);
+    maxima=maxima(indgoodr,:);
 %         maxima=maxima;%mark modify by shiwei 2022/04/07
-        maximaref=maxima;
-        maximatar=maxima;
-        dxy=zeros(size(maximatar));
+    maximaref=maxima;
+    maximatar=maxima;
+    dxy=zeros(size(maximatar));
 %     end
    
     numframes=size(imstack,3);
@@ -225,24 +144,9 @@ for k=1:length(filelist)
         bind=bind-1;
     end
     fmax=max(fmax,numframes);
-     hold (ax,'on');
-%     if p.isglobalfit
-%         if p.multifile
-%             plot(ax,maxima(:,1),maxima(:,2),'ko',maximafound(:,1),maximafound(:,2),'r.')
-%             ax2=axes(uitab(tg,'Title',[num2str(k) 't']));
-%             mim2=max(imstack2,[],3);
-%             imagesc(ax2,mim2)
-%             ax2.NextPlot='add';
-%             axis(ax2,'image');
-%             axis(ax2,'off')
-%             plot(ax2,maximatar(:,1),maximatar(:,2),'md',maximafound(:,1),maximafound(:,2),'r.') 
-%             hold(ax2,'off');
-%             
-%         else
-%         plot(ax,maximaref(:,1),maximaref(:,2),'ko',maximatar(:,1),maximatar(:,2),'md',maximafound(:,1),maximafound(:,2),'r.') 
-%         end
-%     else
-        plot(ax,maxima(:,1),maxima(:,2),'ko',maximafound(:,1),maximafound(:,2),'r.');
+    hold (ax,'on');
+
+    plot(ax,maxima(:,1),maxima(:,2),'ko',maximafound(:,1),maximafound(:,2),'r.');
 %     end
     hold (ax,'off');
     drawnow
@@ -250,16 +154,7 @@ end
 indgoodbead=[b(:).isstack];
 b=b(indgoodbead);
 
-% plot
-
-    
 p.fminmax=[1 fmax];
-
-%         if isfield(p,'files')&&~isempty(p.files)
-%             p.cam_pixelsize_um=p.files(k).info.cam_pixelsize_um;
-%         else
-%             p.cam_pixelsize_um=[1 1]/10; %?????
-%         end      
 
 p.pathhere=fileparts(filelist{1});
 end

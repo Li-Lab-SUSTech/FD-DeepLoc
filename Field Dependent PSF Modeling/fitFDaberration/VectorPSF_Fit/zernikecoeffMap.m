@@ -73,7 +73,7 @@ for j = 1:21
     end
     
    F=scatteredInterpolant(x',y',z','natural');
-   [x1,y1]=meshgrid(1:1:frame_size(1),1:1:frame_size(2));
+   [x1,y1]=meshgrid(1:1:frame_size(2),1:1:frame_size(1));
    maps{j}=F(x1,y1);
    maps_gauss{j} = imgaussfilt(maps{j},mapsmooth_set);
    maps_show(:,:,j) = maps_gauss{j};

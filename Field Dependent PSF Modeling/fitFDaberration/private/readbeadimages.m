@@ -27,7 +27,7 @@ if isempty(imstack)
     else
          imstack=readfile_tif(file);
     end
-    roi=[0 0 size(imstack,1) size(imstack,2)];
+    roi=[0 0 size(imstack,2) size(imstack,1)]; %Keep consistent with the ROI of the original tiff image
 end         
 %     else
 %         imstack=readfile_tif(file);
