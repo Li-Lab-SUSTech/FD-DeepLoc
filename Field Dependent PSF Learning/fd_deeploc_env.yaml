@@ -1,7 +1,7 @@
 name: fd_deeploc
 channels:
   - pytorch
-  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+#   - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
   - conda-forge
   - defaults
   - anaconda
