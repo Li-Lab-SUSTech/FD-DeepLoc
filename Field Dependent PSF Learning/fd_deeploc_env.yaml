@@ -22,7 +22,7 @@ dependencies:
   - cfitsio=3.470
   - charls=2.2.0
   - colorama=0.4.4
-  - cudatoolkit=11.3.1
+  - cudatoolkit=10.2
   - cycler=0.10.0
   - debugpy=1.4.1
   - decorator=5.0.9
@@ -135,7 +135,7 @@ dependencies:
   - pyrsistent=0.17.3
   - python=3.8.11
   - python-dateutil=2.8.2
-  - pytorch=1.10.2
+  - pytorch=1.10.1
   - pytorch-mutex=1.0
   - pytz=2021.1
   - pywin32=228
@@ -156,8 +156,8 @@ dependencies:
   - testpath=0.5.0
   - theano=1.0.5
   - tk=8.6.10
-  - torchaudio=0.10.2
-  - torchvision=0.11.3
+  - torchaudio=0.10.1
+  - torchvision=0.11.2
   - tornado=6.1
   - tqdm=4.62.1
   - traitlets=5.0.5
