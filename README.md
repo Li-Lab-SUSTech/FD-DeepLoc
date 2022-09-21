@@ -11,8 +11,8 @@ Single-molecule localization microscopy (SMLM) in a typical wide-field setup has
 
 #  Requirements
 * FD-DeepLoc was tested on a workstation equipped with Windows 10 system, 128 GB of memory, an Intel(R) Core(TM) i9-11900K, 3.50GHz CPU, and an NVidia GeForce RTX 3080 GPU with 10 GB of video memory. To use FD-DeepLoc yourself, a computer with CPU memory ≥ 32GB and GPU memory ≥ 8GB is recommended since FD-DeepLoc would process large-FOV SMLM images (usually > 500GB).
-* CUDA Driver (>=10.2, https://www.nvidia.com/Download/index.aspx?lang=en-us) is required for fast GPU-based PSF simulation and PSF fitting.
-* For field-dependent aberration map calibration, we tested on Matlab 2020b with CUDA Driver 10.2 on a Windows 10 system.
+* CUDA Driver (>=11.3, https://www.nvidia.com/Download/index.aspx?lang=en-us) is required for fast GPU-based PSF simulation and PSF fitting.
+* For field-dependent aberration map calibration, we tested on Matlab 2021b with CUDA Driver 11.3 on a Windows 10 system.
 * The deep learning part of FD-DeepLoc is based on Python and Pytorch. We recommend conda (https://anaconda.org) to manage the environment and provide a `fd_deeploc_env.yaml` file under the folder `FD-DeepLoc/Field Dependent PSF Learning` to build the conda environment.
 
 # Installation
