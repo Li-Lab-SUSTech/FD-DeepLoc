@@ -2,10 +2,10 @@ function maps_gauss = zernikecoeffMap(p,beads_zrnikeparam,axmap,axdist)
 pos = beads_zrnikeparam.pos;
 value = beads_zrnikeparam.value_P;
 RRSE1 =beads_zrnikeparam.RRSE.RRSE1;
-std_ref=str2num(beads_zrnikeparam.aberrations_std_set.String);
-mapsmooth_set=str2num(beads_zrnikeparam.mapsmooth_set.String);
-modelrrse_set=str2num(beads_zrnikeparam.modelrrse_set.String);
-localroi_set=str2num(beads_zrnikeparam.localroi_set.String);
+std_ref=beads_zrnikeparam.aberrations_std;
+mapsmooth_set=beads_zrnikeparam.mapsmooth;
+modelrrse_set=beads_zrnikeparam.modelrrse;
+localroi_set=beads_zrnikeparam.localroi;
 
 value_all = value;
 pos_all = pos;

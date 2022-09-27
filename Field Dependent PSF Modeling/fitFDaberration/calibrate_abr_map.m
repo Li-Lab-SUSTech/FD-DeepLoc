@@ -125,9 +125,11 @@ for X=1:length(p.xrange)-1
         cspline_all=csplinecal;
         cspline_all=[];
         PSF=csplinecal.PSF;
-        SXY(X,Y)=struct('gausscal',gausscal,'cspline_all',cspline_all,'gauss_sx2_sy2',gauss_sx2_sy2,'gauss_zfit',gauss_zfit,...
-            'cspline',cspline,'Xrangeall',p.xrange+imageRoi(1),'Yrangeall',p.yrange+imageRoi(2),'Xrange',p.xrange([X X+1])+imageRoi(1),...
-            'Yrange',p.yrange([Y Y+1])+imageRoi(2),'posind',[X,Y],'EMon',p.emgain,'PSF',{PSF});
+        SXY(X,Y)=struct('cspline',cspline,'posind',[X,Y],'EMon',p.emgain,'PSF',{PSF});
+        
+%         SXY(X,Y)=struct('gausscal',gausscal,'cspline_all',cspline_all,'gauss_sx2_sy2',gauss_sx2_sy2,'gauss_zfit',gauss_zfit,...
+%             'cspline',cspline,'Xrangeall',p.xrange+imageRoi(1),'Yrangeall',p.yrange+imageRoi(2),'Xrange',p.xrange([X X+1])+imageRoi(1),...
+%             'Yrange',p.yrange([Y Y+1])+imageRoi(2),'posind',[X,Y],'EMon',p.emgain,'PSF',{PSF});        
         
         % ZERNIKE fitting    
         axzernike=axes(uitab(p.tabgroup,'Title','Zernikefit'));
@@ -142,7 +144,7 @@ for X=1:length(p.xrange)-1
 
         %arbitrary
         stack=stack*1000; %random photons, before normalized to maximum pixel
-        psfrescale = str2num(p.psfrescale.String);
+        psfrescale = p.psfrescale;
 
         p.zernikefit.dz=p.dz;
         
@@ -151,10 +153,10 @@ for X=1:length(p.xrange)-1
         axzernikef=axes(uitab(p.tabgroup,'Title','Zval'));
         p.z0=size(coeffZ,3)/2;
         posbeads=testfit_spline(testallrois,{coeffZ},0,p,{},axzernikef);
-        beads_zrnikecoeff.aberrations_std_set=p.aberrationsstd;
-        beads_zrnikecoeff.mapsmooth_set=p.mapsmooth;
-        beads_zrnikecoeff.modelrrse_set=p.modelrrse;
-        beads_zrnikecoeff.localroi_set=p.localroi;
+        beads_zrnikecoeff.aberrations_std=p.aberrationsstd;
+        beads_zrnikecoeff.mapsmooth=p.mapsmooth;
+        beads_zrnikecoeff.modelrrse=p.modelrrse;
+        beads_zrnikecoeff.localroi=p.localroi;
         stack_avg = stack;
         beads_roi_size = size(csplinecal.PSF_all{1});
         beads_num = beads_roi_size(4);
@@ -218,7 +220,7 @@ end
 axcrlb=axes(uitab(p.tabgroup,'Title','CRLB'));
 plotCRLBcsplinePSF(csplinecal.cspline,axcrlb);
 parameters=myrmfield(p,{'tabgroup','status','ax_z','ax_sxsy','fileax'});
-lambda = str2num(parameters.lambda.String);
+lambda = parameters.zernikefit.lambda;
 aber_map=zeros(imageRoi(3),imageRoi(4),21);
 if p.zernikefit.calculatefdmaps
     axDist=axes(uitab(p.tabgroup,'Title','BeadsDistribution'));

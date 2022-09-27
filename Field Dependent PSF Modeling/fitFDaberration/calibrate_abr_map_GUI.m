@@ -55,7 +55,7 @@ classdef calibrate_abr_map_GUI<handle
             
             
             obj.guihandles.selectoutputfile=uicontrol('style','pushbutton','String','Select output file','Position',[xpos1,top-20*vsep,xw*4,fieldheight],'FontSize',fontsize,'Callback',@obj.selectoutputfile_callback);
-            obj.guihandles.selectoutputfile.TooltipString='Select file name for output calibration file. E.g. bead_astig_3dcal.mat or bead2d_3dcal.mat';    
+            obj.guihandles.selectoutputfile.TooltipString='Select file name for output calibration file.';    
           
             %General parameters
             ha='right';
@@ -68,7 +68,7 @@ classdef calibrate_abr_map_GUI<handle
            
             obj.guihandles.dzt=uicontrol('style','text','String','Distance between frames (nm)','Position',[xpos1+4.5*xw,top-4*vsep,xw*2,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha);
             obj.guihandles.dz=uicontrol('style','edit','String','100','Position',[xpos1+6.5*xw,top-4*vsep,xw*0.5,fieldheight],'FontSize',fontsize);
-            obj.guihandles.dz.TooltipString=sprintf('Distance in nm between frames. By convention, these are objective positions (not corrected for refractive index mismatch). \n A spacing between 10 nm and 50 nm works well ');
+            obj.guihandles.dz.TooltipString=sprintf('Distance in nm between frames. By convention, these are objective positions (not corrected for refractive index mismatch).');
             obj.guihandles.dzt.TooltipString=obj.guihandles.dz.TooltipString;
 
             obj.guihandles.filtert=uicontrol('style','text','String','Filter size for peak finding','Position',[xpos1+4.5*xw,top-5*vsep,xw*2,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha);
@@ -88,13 +88,16 @@ classdef calibrate_abr_map_GUI<handle
      
             obj.guihandles.roisizet=uicontrol('style','text','String','ROI size: X,Y (pixels)','Position',[xpos1+4.5*xw,top-7*vsep,xw*2,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha);
             obj.guihandles.ROIxy=uicontrol('style','edit','String','27','Position',[xpos1+6.5*xw,top-7*vsep,xw*.5,fieldheight],'FontSize',fontsize);
+            obj.guihandles.ROIxy.TooltipString=sprintf('The pixels size of the PSF ROI selected for the fitting. Usually keep 27 for astigmatism PSF and 51 for DMO Tetrapod PSF and the maximum range not to exceed 61 pixels');
             
             obj.guihandles.psfrescalet=uicontrol('style','text','String','PSF Rescale','Position',[xpos1+7*xw,top-7*vsep,xw*1,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha);
             obj.guihandles.psfrescale=uicontrol('style','edit','String','0.5','Position',[xpos1+8*xw,top-7*vsep,xw*0.5,fieldheight],'FontSize',fontsize);
+            obj.guihandles.psfrescale.TooltipString=sprintf('Smoothing for the PSF model.When increasing this value the PSF model is smoother. Usually, keep the default value');
 
             obj.guihandles.setframest=uicontrol('style','text','String','Frames steps','Position',[xpos1+4.5*xw,top-8*vsep,xw*2,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha);
             obj.guihandles.setframes=uicontrol('style','checkbox','String','set frames','Position',[xpos1+6.5*xw,top-8*vsep,xw*1,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha,'Callback',@obj.setframes_callback);
             obj.guihandles.framerange=uicontrol('style','edit','String','1:5:201','Position',[xpos1+7.5*xw,top-8*vsep,xw,fieldheight],'FontSize',fontsize,'Visible','off');
+            obj.guihandles.setframes.TooltipString=sprintf('Set the frame interval of z-stacks to improve the fitting speed, but may reduce the fitting accuracy due to fewer frames.\n At the same time, you need to change the "Distance between frames" parameter to ensure that the distance between the actual fitting two frames is correct');
 
             %fit zernike coefficients parameters
             obj.guihandles.zernikefit=uicontrol('style','text','String','Fit zernike parameters: ','Position',[xpos1+4.5*xw,top-9*vsep,xw*2,fieldheight],'FontSize',fontsize,'HorizontalAlignment',hatitle,'FontWeight','bold');  
@@ -135,19 +138,24 @@ classdef calibrate_abr_map_GUI<handle
             
             %Calibrate maps parameters
             obj.guihandles.mapcalibrate=uicontrol('style','text','String','Calibrate maps parameters: ','Position',[xpos1+4.5*xw,top-15*vsep,xw*2,fieldheight],'FontSize',fontsize,'HorizontalAlignment',hatitle,'FontWeight','bold'); 
-            obj.guihandles.fdmapscal=uicontrol('style','checkbox','String','Generate field dependant aberration maps','Position',[xpos1+4.5*xw,top-16*vsep,xw*2.6,fieldheight],'FontSize',fontsize,'HorizontalAlignment',hatitle,'Callback',@obj.FDmaps_callback,'Value',1);    
+            obj.guihandles.fdmapscal=uicontrol('style','checkbox','String','Generate field dependant aberration maps','Position',[xpos1+4.5*xw,top-16*vsep,xw*2.6,fieldheight],'FontSize',fontsize,'HorizontalAlignment',hatitle,'Callback',@obj.FDmaps_callback,'Value',1);   
+            obj.guihandles.fdmapscal.TooltipString=sprintf('Select whether to generate field dependant aberration maps. When not select, it is the map of the average aberration coefficient generated, \n which can be applied to the case where the image area is relatively small and the field dependant aberration are not significant. ');
             
             obj.guihandles.stdofaberrationst=uicontrol('style','text','String',' Filter factor for outlier beads','Position',[xpos1+4.5*xw,top-17*vsep,xw*2,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha,'Visible','on');
             obj.guihandles.stdofaberrations=uicontrol('style','edit','String','2.5','Position',[xpos1+6.5*xw,top-17*vsep,xw*.5,fieldheight],'FontSize',fontsize,'Visible','on');
+            obj.guihandles.stdofaberrations.TooltipString=sprintf('Exclude some outlier beads. The default parameter of 2.5 means to remove the beads whose Zernike coefficient standard deviation exceeds this value. Usually keep the default value.');
             
             obj.guihandles.modelrrset=uicontrol('style','text','String','Model rrse','Position',[xpos1+7*xw,top-17*vsep,xw*1,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha,'Visible','on');
             obj.guihandles.modelrrse=uicontrol('style','edit','String','0.2','Position',[xpos1+8*xw,top-17*vsep,xw*.5,fieldheight],'FontSize',fontsize,'Visible','on');
+            obj.guihandles.modelrrse.TooltipString=sprintf('Discard the bad fitting precision beads. The default parameter means to remove the beads whose relative root square error (RRSE) between the raw data and fitted model was more than 0.2. Usually keep the default value.');
             
             obj.guihandles.mapsmootht=uicontrol('style','text','String','Map smooth','Position',[xpos1+4.5*xw,top-18*vsep,xw*2,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha,'Visible','on');
             obj.guihandles.mapsmooth=uicontrol('style','edit','String','200','Position',[xpos1+6.5*xw,top-18*vsep,xw*.5,fieldheight],'FontSize',fontsize,'Visible','on');
-            
+            obj.guihandles.mapsmooth.TooltipString=sprintf('Gaussian smoothing for the aberration maps. Usually keep the default value.');
+           
             obj.guihandles.localroit=uicontrol('style','text','String','Local roi','Position',[xpos1+7*xw,top-18*vsep,xw*1,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha,'Visible','on');
             obj.guihandles.localroi=uicontrol('style','edit','String','256','Position',[xpos1+8*xw,top-18*vsep,xw*.5,fieldheight],'FontSize',fontsize,'Visible','on');
+            obj.guihandles.localroi.TooltipString=sprintf('The default parameter means to exclude some outlier beads that 256¡Á256 pixels around them. ');
             
             obj.guihandles.run=uicontrol('style','pushbutton','String','Calculate field dependant aberration maps','Position',[xpos1+4.5*xw,top-20*vsep,xw*4,fieldheight],'FontSize',fontsize,'Callback',@obj.run_callback,'FontWeight','bold');
                      
@@ -278,12 +286,12 @@ classdef calibrate_abr_map_GUI<handle
                 p.framerange=str2num(obj.guihandles.framerange.String);
             end
 
-            p.aberrationsstd = obj.guihandles.stdofaberrations;
-            p.mapsmooth = obj.guihandles.mapsmooth;
-            p.modelrrse = obj.guihandles.modelrrse;
-            p.localroi=obj.guihandles.localroi;
-            p.psfrescale = obj.guihandles.psfrescale;
-            p.lambda=obj.guihandles.lambda;
+            p.aberrationsstd = str2num(obj.guihandles.stdofaberrations.String);
+            p.mapsmooth = str2num(obj.guihandles.mapsmooth.String);
+            p.modelrrse = str2num(obj.guihandles.modelrrse.String);
+            p.localroi=str2num(obj.guihandles.localroi.String);
+            p.psfrescale = str2num(obj.guihandles.psfrescale.String);
+%             p.lambda=obj.guihandles.lambda;
             p.zernikefit=obj.zernikeparameters;
             p.zernikefit.calculatefdmaps=obj.guihandles.fdmapscal.Value;
             
