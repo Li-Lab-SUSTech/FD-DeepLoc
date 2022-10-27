@@ -1485,8 +1485,10 @@ def test_local_CRLB(model, test_pos, test_photons, test_bg, Nmol=25, use_train_c
             frame_count += 1
 
         if use_train_cam:
+            field_xy = [test_pos[0] - np.floor(Npixels / 2), test_pos[0] - np.floor(Npixels / 2) + Npixels - 1,
+                        test_pos[1] - np.floor(Npixels / 2), test_pos[1] - np.floor(Npixels / 2) + Npixels - 1]
             data_model = PSF_torch.gen_psf() * PSF_torch.Nphotons
-            data_tmp = cpu(model.dat_generator.sim_noise(data_model))
+            data_tmp = cpu(model.dat_generator.sim_noise(data_model, field_xy))
         else:
             data_model = PSF_torch.gen_psf() * PSF_torch.Nphotons + PSF_torch.bg
             data_tmp = np.random.poisson(cpu(data_model))
