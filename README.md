@@ -28,7 +28,7 @@ A detailed tutorial file `FD-DeepLoc tutorial.pdf` is provided under the main di
 2. Field-dependent deep-learning localization network (including training and inference examples)
 
 # Demo examples
-There are 5 different demo notebooks in the folder `Field Dependent PSF Learning\demo_notebooks` to illustrate the 
+There are 4 different demo notebooks in the folder `Field Dependent PSF Learning\demo_notebooks` to illustrate the 
 use of FD-DeepLoc. The user need to download the corresponding dataset at https://todo and put the demo dataset under the 
 folder `demo_datasets`. For each demo example, we provide a training notebook `train.ipynp`, an inference notebook `inference.ipynb`, 
 test datasets `.tif`, aberration maps `aber_map.mat` and trained models `FD-DeepLoc.pkl`. One can run the training notebook to train a network from scratch or
