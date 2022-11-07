@@ -35,7 +35,7 @@ def decode_func(model, images, field_xy, batch_size=100, z_scale=10, int_scale=1
         if N != 1:
             images = np.concatenate([images[1:2], images, images[-2:-1]], 0).astype('float32')
         else:
-            images = np.concatenate([images[0], images, images[0]], 0).astype('float32')
+            images = np.concatenate([images, images, images], 0).astype('float32')
 
         if use_tqdm:
             tqdm_func = tqdm
@@ -759,7 +759,7 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
 
 
 def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, rescale_xy, pix_nm, plot_num,
-                wobble=[0, 0], start_field_pos=[0, 0], stack_interval=4000, divide_and_conquer=True, win_size=128,
+                wobble=[0, 0], start_field_pos=[0, 0], stack_interval=100000, divide_and_conquer=True, win_size=128,
                 padding=True, candi_thre=0.3, nms_thre=0.3):
     """ Analyze the SMLM images using FD-DeepLoc model
 
@@ -1093,7 +1093,7 @@ def padding_shift(origin_areas, padded_areas, preds_list, pix_nm):
 def read_bigtiff_and_predict(model, image_path, stack_giga=0.5, batch_size=10, use_tqdm=True,
                              nms=True, candi_thre=0.3, nms_thre=0.3,
                              rescale_xy=False, wobble=[0, 0], pixel_size=[100,100], plot_num=None,
-                             start_field_pos=[0, 0], stack_interval=4000, divide_and_conquer=True,
+                             start_field_pos=[0, 0], stack_interval=100000, divide_and_conquer=True,
                              win_size=256, padding=True, save_path='./pred_list.csv'):
     """ Analyze the SMLM images using FD-DeepLoc model
 
@@ -1170,6 +1170,8 @@ def read_bigtiff_and_predict(model, image_path, stack_giga=0.5, batch_size=10, u
         stack_num = int(np.ceil(occu_mem / stack_giga))
         frames_per_stack = int(total_shape[0] // stack_num)
 
+        fov_size = [total_shape[2] * pixel_size[0], total_shape[1] * pixel_size[1]]
+
         frames_ind = []
         i = 0
         while (i + 1) * frames_per_stack + last_frame_num <= total_shape[0]:
@@ -1181,6 +1183,8 @@ def read_bigtiff_and_predict(model, image_path, stack_giga=0.5, batch_size=10, u
 
         for tif_ind in range(len(frames_ind)):
             eval_images = tif.asarray(key=frames_ind[tif_ind], series=0)
+            if len(eval_images.shape) == 2:
+                eval_images = eval_images[np.newaxis, :, :]
             print('{}{}{}{}{}{}{}{}{}{}'.format('stack: ', tif_ind + 1, '/', len(frames_ind), ', contain imgs: ',
                                                 eval_images.shape[0], ', already analyzed:', frames_ind[tif_ind].start,
                                                 '/', total_shape[0]))
@@ -1191,7 +1195,7 @@ def read_bigtiff_and_predict(model, image_path, stack_giga=0.5, batch_size=10, u
             # # only process specific subarea of the image
             # eval_images = eval_images[:, 48:48+256, 436:436+256]
 
-            fov_size = [eval_images.shape[2] * pixel_size[0], eval_images.shape[1] * pixel_size[1]]
+            # fov_size = [eval_images.shape[2] * pixel_size[0], eval_images.shape[1] * pixel_size[1]]
 
             # the recognition process
             with autocast():  # speed up, but with precision loss
@@ -1367,19 +1371,19 @@ def check_local_CRLB(model, test_pos, test_photons, test_bg, Nmol=25):
     plt.show()
 
     # calculate CRLB
-    x_crlb, y_crlb, z_crlb, model_torch = PSF_torch.cal_crlb()
+    y_crlb, x_crlb, z_crlb, model_torch = PSF_torch.cal_crlb()
     x_crlb_np = x_crlb.detach().cpu().numpy()
     y_crlb_np = y_crlb.detach().cpu().numpy()
     z_crlb_np = z_crlb.detach().cpu().numpy()
     print('average 3D CRLB is:', np.sum(x_crlb_np ** 2 + y_crlb_np ** 2 + z_crlb_np ** 2) / PSF_torch.Nmol)
     plt.figure(constrained_layout=True)
-    plt.plot(zemit, x_crlb_np, zemit, y_crlb_np, zemit, z_crlb_np)
-    plt.legend(('$CRLB_y^{1/2}$', '$CRLB_x^{1/2}$', '$CRLB_z^{1/2}$'))
+    plt.plot(zemit, x_crlb_np, 'b', zemit, y_crlb_np,'g', zemit, z_crlb_np,'r')
+    plt.legend(('$CRLB_x^{1/2}$', '$CRLB_y^{1/2}$', '$CRLB_z^{1/2}$'))
     plt.xlim([np.min(zemit), np.max(zemit)])
     plt.show()
 
 
-def test_local_CRLB(model, test_pos, test_photons, test_bg, Nmol=25, use_train_cam=False, test_num=3000):
+def test_local_CRLB(model, test_pos, test_photons, test_bg, Nmol=25, use_train_cam=False, test_num=3000, show_res=True):
     """
 
     Compare the CRLB of the local PSF at given positions with the RMSE of the network prediction
@@ -1453,7 +1457,7 @@ def test_local_CRLB(model, test_pos, test_photons, test_bg, Nmol=25, use_train_c
     # plt.show()
 
     # calculate CRLB
-    x_crlb, y_crlb, z_crlb, model_torch = PSF_torch.cal_crlb()
+    y_crlb, x_crlb, z_crlb, model_torch = PSF_torch.cal_crlb()
     x_crlb_np = x_crlb.detach().cpu().numpy()
     y_crlb_np = y_crlb.detach().cpu().numpy()
     z_crlb_np = z_crlb.detach().cpu().numpy()
@@ -1498,15 +1502,17 @@ def test_local_CRLB(model, test_pos, test_photons, test_bg, Nmol=25, use_train_c
         print('{}{}{}{}{}{}'.format('\r', 'simulated ', (i + 1) * Nmol, '/', test_num * Nmol, ' images'), end='')
 
     data_buffer = data_buffer[1:]
+    print('\n')
 
     # show test data
-    print('\nexample single-emitter data for CRLB test')
-    plt.figure(constrained_layout=True)
-    for j in range(Nmol):
-        plt.subplot(int(np.sqrt(Nmol)), int(np.sqrt(Nmol)), j + 1)
-        plt.imshow(data_buffer[j])
-        plt.title(str(np.round(ground_truth[j][4])) + ' nm')
-    plt.show()
+    if show_res:
+        print('example single-emitter data for CRLB test')
+        plt.figure(constrained_layout=True)
+        for j in range(Nmol):
+            plt.subplot(int(np.sqrt(Nmol)), int(np.sqrt(Nmol)), j + 1)
+            plt.imshow(data_buffer[j])
+            plt.title(str(np.round(ground_truth[j][4])) + ' nm')
+        plt.show()
 
     print('start inferring')
     # compare network's prediction with CRLB
@@ -1536,13 +1542,16 @@ def test_local_CRLB(model, test_pos, test_photons, test_bg, Nmol=25, use_train_c
             rmse_xyz[1, i] = np.sqrt(np.mean(np.square(tmp[:, 1] - tmp[:, 5])))
             rmse_xyz[2, i] = np.sqrt(np.mean(np.square(tmp[:, 2] - tmp[:, 6])))
 
-    print('plot the RMSE of network prediction vs CRLB')
-    plt.figure(constrained_layout=True)
-    plt.plot(zemit, x_crlb_np, zemit, y_crlb_np, zemit, z_crlb_np)
-    plt.scatter(zemit, rmse_xyz[1, :])
-    plt.scatter(zemit, rmse_xyz[0, :])
-    plt.scatter(zemit, rmse_xyz[2, :])
-    plt.legend(('$CRLB_y^{1/2}$', '$CRLB_x^{1/2}$', '$CRLB_z^{1/2}$', '$RMSE_y$', '$RMSE_x$', '$RMSE_z$'), ncol=2,
-               loc='upper center')
-    plt.xlim([np.min(zemit), np.max(zemit)])
-    plt.show()
+    if show_res:
+        print('plot the RMSE of network prediction vs CRLB')
+        plt.figure(constrained_layout=True)
+        plt.plot(zemit, x_crlb_np, 'b', zemit, y_crlb_np, 'g', zemit, z_crlb_np, 'r')
+        plt.scatter(zemit, rmse_xyz[0, :],c='b')
+        plt.scatter(zemit, rmse_xyz[1, :],c='g')
+        plt.scatter(zemit, rmse_xyz[2, :],c='r')
+        plt.legend(('$CRLB_x^{1/2}$', '$CRLB_y^{1/2}$', '$CRLB_z^{1/2}$', '$RMSE_x$', '$RMSE_y$', '$RMSE_z$'), ncol=2,
+                   loc='upper center')
+        plt.xlim([np.min(zemit), np.max(zemit)])
+        plt.show()
+
+    return zemit, x_crlb_np, y_crlb_np, z_crlb_np, rmse_xyz

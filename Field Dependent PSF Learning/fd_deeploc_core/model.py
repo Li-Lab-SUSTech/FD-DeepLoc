@@ -119,7 +119,9 @@ class DeepLocModel(TrainFuncs, LossFuncs, RecFuncs):
               'field_xy:', field_xy)
 
         plt.figure(constrained_layout=True)
-        plt.imshow(self.evaluation_pars['eval_imgs'][0])
+        ax_tmp = plt.subplot(1,1,1)
+        img_tmp = plt.imshow(self.evaluation_pars['eval_imgs'][0])
+        plt.colorbar(mappable=img_tmp,ax=ax_tmp, fraction=0.046, pad=0.04)
         plt.title('the first image of eval set,check the background')
         # plt.tight_layout()
         plt.show()
