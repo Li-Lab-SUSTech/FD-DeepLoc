@@ -43,7 +43,7 @@ spatially-variant fitting case. This demo takes about 9 hours to train 2 network
 
 
 2. `demo2` trains a network based on our experimental large-FOV astigmatism NPC dataset (fig.4). The corresponding 
-test dataset contains two cropped sub-regions from the entire FOV with different field positions. It should be noted that 
+test dataset contains two cropped sub-regions of the entire FOV with different field positions. It should be noted that 
 the predictions of this dataset need drift correction for better view. This demo takes about 5 hours to train
 and tens of minutes to predict.  
 
