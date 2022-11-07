@@ -35,28 +35,28 @@ test datasets `.tif`, aberration maps `aber_map.mat` and trained models `FD-Deep
  just run the inference notebook using provided trained models. All network predictions will be saved in a `.csv` file in the format of molecule list.  We recommend to use the [SMAP](https://www.nature.com/articles/s41592-020-0938-1) to postprocess 
 the molecule list, such as drift correction, grouping, filtering, and rendering, etc.
 
-1. `demo1` trains 2 networks based on the simulated large-FOV field-dependent aberrated dataset (namely the normal aberration 
+1. `demo1` trains 2 networks based on the simulated large-FOV field-dependent aberrated dataset (the normal aberration 
 and medium SNR dataset in fig.3). One network utilized all features of FD-DeepLoc while the other one didn't use 
 CoodConv and Cross Entropy. Both of them are trained without temporal context (the 3 consecutive frames input) 
 for the purpose of CRLB test. This demo aims to show the superority of FD-DeepLoc over a conventional CNN in 
 spatially-variant fitting case. This demo takes about 9 hours to train 2 networks and 30 minutes to do the field-dependent CRLB test.  
 
 
-2. `demo2` trains a network based on our experimental large-FOV astigmatism NPC dataset (as shown in fig.4). The corresponding 
+2. `demo2` trains a network based on our experimental large-FOV astigmatism NPC dataset (fig.4). The corresponding 
 test dataset contains two cropped sub-regions from the entire FOV with different field positions. It should be noted that 
 the predictions of this dataset need drift correction for better view. This demo takes about 5 hours to train
 and tens of minutes to predict.  
 
 
 3. `demo3` illustrates the common using pipeline of FD-DeepLoc on a large FOV and DOF with field-dependent aberrations. 
-It is based on our experimental DMO-Tetrapod PSF (3μm) neuron dataset (as shown in fig.6). The dataset 
+It is based on our experimental DMO-Tetrapod PSF (3μm) neuron dataset (fig.6). The dataset 
 contains the first 10,000 raw frames of the entire FOV. This demo takes about 5 hours to train a network and 2 hours to 
 predict.
 
 
 4. `demo4` illustrates the common using pipeline of FD-DeepLoc on a FOV without field-dependent aberrations 
 (aberration maps are uniform). It is based on our experimental DMO-SaddlePoint PSF (1.2μm) NPC dataset
-(as shown in supplementary fig.5). The CoordConv is turned off as it will not learn any extra information from 
+(supplementary fig.5). The CoordConv is turned off as it will not learn any extra information from 
 the spatially-invariant training data. This demo takes about 5 hours to train a network and 10 minutes to predict.  
 
 
