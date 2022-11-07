@@ -23,7 +23,7 @@ Single-molecule localization microscopy (SMLM) in a typical wide-field setup has
 5. The example bead stacks files for field-dependent aberration map calibration and network analysis example data can be found at: https://zenodo.org/record/6547064#.YoRrPKhByUk
 
 # How to run
-A detailed tutorial file `FD-DeepLoc tutorial.pdf` is provided under the main directory, which illustrates the procedures for 
+The notebook file `.ipynb` itself contains detailed instruction. And a general tutorial file `FD-DeepLoc tutorial.pdf` is also provided under the main directory, which illustrates the procedures for 
 1. Field-dependent aberration map calibration.
 2. Field-dependent deep-learning localization network (including training and inference examples)
 
