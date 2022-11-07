@@ -39,7 +39,7 @@ the molecule list, such as drift correction, grouping, filtering, and rendering,
 and medium SNR dataset in fig.3). One network utilized all features of FD-DeepLoc while the other one didn't use 
 CoodConv and Cross Entropy. Both of them are trained without temporal context (the 3 consecutive frames input) 
 for the purpose of CRLB test. This demo aims to show the superority of FD-DeepLoc over a conventional CNN in 
-spatially-variant fitting case. This demo takes about 9 hours to train 2 networks and 2 hours to do the field-dependent CRLB test.  
+spatially-variant fitting case. This demo takes about 9 hours to train 2 networks and 30 minutes to do the field-dependent CRLB test.  
 
 
 2. `demo2` trains a network based on our experimental large-FOV astigmatism NPC dataset (as shown in fig.4). The corresponding 
