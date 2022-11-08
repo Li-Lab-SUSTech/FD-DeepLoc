@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import torch
 # from PSF_vector_c import *
 from PSF_vector_gpu import *
@@ -42,16 +43,21 @@ class DataSimulator(PSF_VECTOR_GPU):
                                  5, -3, 0, 5, 3, 0, 6, -2, 0, 6, 2, 0, 7, 1, 0, 7, -1, 0, 8, 0, 0],
                                 dtype=np.float32).reshape(21, 3).T
         plt.figure(constrained_layout=True)
+        # plt.figure()
         for i in range(zernikeModes.shape[1]):
-            plt.subplot(3, 8, i + 1)
-            plt.imshow(self.aber_map[:, :, i] * self.psf_pars['lambda'])
+            ax_tmp = plt.subplot(5, 5, i + 1)
+            img_tmp = plt.imshow(self.aber_map[:, :, i] * self.psf_pars['lambda'])
+            plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
             plt.title(str(zernikeModes[0:2, i]))
-        plt.subplot(3, 8, i + 2)
-        plt.imshow(self.aber_map[:, :, 21])
+        ax_tmp=plt.subplot(5, 5, i + 2)
+        img_tmp=plt.imshow(self.aber_map[:, :, 21])
+        plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
         plt.title('IsigmaX')
-        plt.subplot(3, 8, i + 3)
-        plt.imshow(self.aber_map[:, :, 22])
+        ax_tmp=plt.subplot(5, 5, i + 3)
+        img_tmp=plt.imshow(self.aber_map[:, :, 22])
+        plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
         plt.title('IsigmaY')
+        # plt.tight_layout()
         plt.show()
 
     def look_psf(self, pos_xy, z_scale=1000):
@@ -168,7 +174,7 @@ class DataSimulator(PSF_VECTOR_GPU):
                 read_out_noise = torch.distributions.Normal(zeros, zeros + RN).sample()
 
                 imgs_sim = imgs_sim + read_out_noise
-                imgs_sim = imgs_sim / self.simulation_pars['e_per_adu'] + self.simulation_pars['baseline']
+                imgs_sim = torch.clamp(imgs_sim / self.simulation_pars['e_per_adu'] + self.simulation_pars['baseline'], min=0)
 
         elif self.simulation_pars['camera'] == 'sCMOS':
             bg_photons = (self.simulation_pars['backg'] - self.simulation_pars['baseline']) \
@@ -208,7 +214,7 @@ class DataSimulator(PSF_VECTOR_GPU):
                 read_out_noise = torch.distributions.Normal(zeros, zeros + RN).sample()
 
                 imgs_sim = imgs_sim + read_out_noise
-                imgs_sim = imgs_sim / self.simulation_pars['e_per_adu'] + self.simulation_pars['baseline']
+                imgs_sim = torch.clamp(imgs_sim / self.simulation_pars['e_per_adu'] + self.simulation_pars['baseline'], min=0)
         else:
             print('wrong camera types! please choose EMCCD or sCMOS!')
 

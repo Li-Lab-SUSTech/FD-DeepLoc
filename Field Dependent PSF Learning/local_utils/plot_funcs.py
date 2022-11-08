@@ -225,9 +225,10 @@ def plot_sample_predictions(model, plot_infs, eval_csv, plot_num, fov_size, pixe
             ax[2].add_patch(plt.Circle((x, y), radius=3, color='g', fill=False, lw=0.5))
 
     fig_fs,ax_fs=plt.subplots(1,1,figsize=(6,6),constrained_layout=True)
-    ax_fs.imshow(datas[0],cmap='gray')
+    plt.colorbar(ax_fs.imshow(datas[0], cmap='gray'), ax=ax_fs, fraction=0.046, pad=0.04)
     for x,y in zip(img_infs['Samples_ps'].nonzero()[1],img_infs['Samples_ps'].nonzero()[0]):
         ax_fs.add_patch(plt.Circle((x, y), radius=1.5, color='cyan', fill=True, lw=0.5, alpha=0.8))
+
 
     # plt.figure()
     # plt.imshow(datas[2])
@@ -274,5 +275,6 @@ def plot_preds_distribution(preds,preds_final):
     axes[1,1].axvspan(0, np.array(preds_final)[:, 9].max(),color='green', alpha=0.1)
     axes[1,1].set_xlabel(r'$\sigma_z$ [nm]')
     axes[1,1].set_ylabel('counts')
-
+    plt.tight_layout()
+    plt.show()
     return fig,axes

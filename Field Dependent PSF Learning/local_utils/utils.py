@@ -7,6 +7,7 @@ import scipy.stats
 from matplotlib import pyplot as plt
 from operator import itemgetter
 import random
+from local_utils import *
 
 def gpu(x):
     '''Transforms numpy array or torch tensor it torch.cuda.FloatTensor'''
@@ -187,3 +188,15 @@ def otf_gauss2D(shape=(3,3),Isigmax=0.5,Isigmay=0.5):
     if sumh != 0:
         h /= sumh
     return h
+
+def read_first_size_gb_tiff(image_path, size_gb=4):
+    with TiffFile(image_path, is_ome=False) as tif:
+        total_shape = tif.series[0].shape
+        occu_mem = total_shape[0] * total_shape[1] * total_shape[2] * 16 / (1024 ** 3) / 8
+        if occu_mem<size_gb:
+            index_img=total_shape[0]
+        else:
+            index_img = int(size_gb/occu_mem*total_shape[0])
+        images = tif.asarray(key=range(0,index_img), series=0)
+    print("read first %d images" % (images.shape[0]))
+    return images
