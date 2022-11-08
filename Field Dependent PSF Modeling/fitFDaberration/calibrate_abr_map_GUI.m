@@ -92,7 +92,7 @@ classdef calibrate_abr_map_GUI<handle
             
             obj.guihandles.psfrescalet=uicontrol('style','text','String','PSF Rescale','Position',[xpos1+7*xw,top-7*vsep,xw*1,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha);
             obj.guihandles.psfrescale=uicontrol('style','edit','String','0.5','Position',[xpos1+8*xw,top-7*vsep,xw*0.5,fieldheight],'FontSize',fontsize);
-            obj.guihandles.psfrescale.TooltipString=sprintf('Smoothing for the PSF model.When increasing this value the PSF model is smoother. Usually, keep the default value');
+            obj.guihandles.psfrescale.TooltipString=sprintf('Smoothing for the PSF model.The parameters can be adjusted according to the psf shape.\n Increasing the value of the parameter will make the shape of the PSF smoother, 0.5 to 0.8 is recommended');
 
             obj.guihandles.setframest=uicontrol('style','text','String','Frames steps','Position',[xpos1+4.5*xw,top-8*vsep,xw*2,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha);
             obj.guihandles.setframes=uicontrol('style','checkbox','String','set frames','Position',[xpos1+6.5*xw,top-8*vsep,xw*1,fieldheight],'FontSize',fontsize,'HorizontalAlignment',ha,'Callback',@obj.setframes_callback);

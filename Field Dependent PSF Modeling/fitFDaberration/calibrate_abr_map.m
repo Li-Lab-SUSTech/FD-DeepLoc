@@ -238,11 +238,11 @@ end
 
 aber_map(:,:,22)= psfrescale;
 aber_map(:,:,23)= psfrescale;
-save(p.outputfile,'aber_map'); 
+save(p.outputfile,'aber_map','-v7'); 
 
 cal_par =strrep(p.outputfile,'aber_map.mat','3dcal.mat');
 
-save(cal_par,'SXY','parameters','beads_zrnikecoeff');
+save(cal_par,'SXY','parameters','beads_zrnikecoeff','-v7');
 filefig=strrep(cal_par,'.mat','.fig');
 savefig(calibrationfigure,filefig,'compact');
 p.status.String='Calibration done';drawnow
