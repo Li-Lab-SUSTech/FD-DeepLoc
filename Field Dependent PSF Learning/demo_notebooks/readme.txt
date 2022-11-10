@@ -1,2 +1,0 @@
-To run one demo, the user needs to move the notebook file (train.ipynb/inference.ipynb) to the root directory 'Field Dependent PSF Learning\'.
-This ensures that all packages of FD-DeepLoc can be found and the demo can get access to the demo datasets.
