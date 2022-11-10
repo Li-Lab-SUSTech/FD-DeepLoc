@@ -29,7 +29,7 @@ The notebook file `.ipynb` itself contains detailed instruction. And a general t
 
 # Demo examples
 There are 4 different demo notebooks in the folder `Field Dependent PSF Learning\demo_notebooks` to illustrate the 
-use of FD-DeepLoc. The user need to download the corresponding test dataset using the link below and put the demo dataset under the 
+use of FD-DeepLoc. To run one demo, the user needs to move the notebook file to the root directory `Field Dependent PSF Learning\`. Then download the corresponding test dataset using the link below and uncompress it under the 
 folder `demo_datasets`. For each demo example, we provide a training notebook `train.ipynp`, an inference notebook `inference.ipynb`, 
 test datasets `.tif`, aberration maps `aber_map.mat` and trained models `FD-DeepLoc.pkl`. One can run the training notebook to train a network from scratch or
  just run the inference notebook using provided trained models. For demo2 and demo3, we also provide the raw bead stacks files for field-dependent aberration map calibration. All network predictions will be saved in a `.csv` file in the format of molecule list.  We recommend to use the [SMAP](https://www.nature.com/articles/s41592-020-0938-1) to postprocess the molecule list, such as drift correction, grouping, filtering, and rendering, etc.
