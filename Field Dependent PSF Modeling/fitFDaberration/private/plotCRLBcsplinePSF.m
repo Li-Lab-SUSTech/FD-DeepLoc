@@ -1,4 +1,4 @@
-function plotCRLBcsplinePSF(cspline,ax)
+function plotCRLBcsplinePSF(cspline,fit_parameters,ax)
 dz=0.1;
 rois=size(cspline.coeff{1},1)-3;
 N=5000;bg=50;x=rois/2;y=rois/2;z=(1:dz:size(cspline.coeff{1},3))';  
@@ -6,9 +6,10 @@ z_range = abs(size(cspline.coeff{1},3)*cspline.dz /2);
 v1=ones(length(z),1);
 coords=[v1*x , v1*y , v1* N, v1*bg, z];
 crlb=CalSplineCRLB(cspline.coeff{1}, rois, coords);
-px=120;
-xe=sqrt(crlb(:,1))*px;
-ye=sqrt(crlb(:,2))*px;
+xpx=fit_parameters.pixelSizeX;
+ypx=fit_parameters.pixelSizeY;
+xe=sqrt(crlb(:,1))*xpx;
+ye=sqrt(crlb(:,2))*ypx;
 ze=sqrt(crlb(:,5))*cspline.dz;
 zp=(z-cspline.z0)*cspline.dz;
 indpl=abs(zp)<z_range;  
