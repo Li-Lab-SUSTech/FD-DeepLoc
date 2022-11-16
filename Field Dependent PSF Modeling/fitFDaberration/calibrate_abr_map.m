@@ -125,11 +125,11 @@ for X=1:length(p.xrange)-1
         cspline_all=csplinecal;
         cspline_all=[];
         PSF=csplinecal.PSF;
-        SXY(X,Y)=struct('cspline',cspline,'posind',[X,Y],'EMon',p.emgain,'PSF',{PSF});
+%         SXY(X,Y)=struct('cspline',cspline,'posind',[X,Y],'EMon',p.emgain,'PSF',{PSF});
         
-%         SXY(X,Y)=struct('gausscal',gausscal,'cspline_all',cspline_all,'gauss_sx2_sy2',gauss_sx2_sy2,'gauss_zfit',gauss_zfit,...
-%             'cspline',cspline,'Xrangeall',p.xrange+imageRoi(1),'Yrangeall',p.yrange+imageRoi(2),'Xrange',p.xrange([X X+1])+imageRoi(1),...
-%             'Yrange',p.yrange([Y Y+1])+imageRoi(2),'posind',[X,Y],'EMon',p.emgain,'PSF',{PSF});        
+        SXY(X,Y)=struct('gausscal',gausscal,'cspline_all',cspline_all,'gauss_sx2_sy2',gauss_sx2_sy2,'gauss_zfit',gauss_zfit,...
+            'cspline',cspline,'Xrangeall',p.xrange+imageRoi(1),'Yrangeall',p.yrange+imageRoi(2),'Xrange',p.xrange([X X+1])+imageRoi(1),...
+            'Yrange',p.yrange([Y Y+1])+imageRoi(2),'posind',[X,Y],'EMon',p.emgain,'PSF',{PSF});        
         
         % ZERNIKE fitting    
         axzernike=axes(uitab(p.tabgroup,'Title','Zernikefit'));
