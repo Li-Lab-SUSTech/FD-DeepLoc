@@ -29,7 +29,7 @@ The notebook file `.ipynb` itself contains detailed instruction. And a general t
 
 # Demo examples
 There are 4 different demo notebooks in the folder `Field Dependent PSF Learning\demo_notebooks` to illustrate the 
-use of FD-DeepLoc. To run one demo, the user needs to move the notebook file to the root directory `Field Dependent PSF Learning\`. Then download the corresponding test dataset using the link below and uncompress it under the 
+use of FD-DeepLoc. To run one demo, the user needs to download the corresponding test dataset using the link below and uncompress it under the 
 folder `demo_datasets`. For each demo example, we provide a training notebook `train.ipynp`, an inference notebook `inference.ipynb`, 
 test datasets `.tif`, aberration maps `aber_map.mat` and trained models `FD-DeepLoc.pkl`. One can run the training notebook to train a network from scratch or
  just run the inference notebook using provided trained models. For demo2 and demo3, we also provide the raw bead stacks files for field-dependent aberration map calibration. All network predictions will be saved in a `.csv` file in the format of molecule list.  We recommend to use the [SMAP](https://www.nature.com/articles/s41592-020-0938-1) to postprocess the molecule list, such as drift correction, grouping, filtering, and rendering, etc.
@@ -39,7 +39,8 @@ and medium SNR dataset in fig.3). One network utilized all features of FD-DeepLo
 CoodConv and Cross Entropy. Both of them are trained without temporal context (the 3 consecutive frames input) 
 for the purpose of CRLB test. This demo aims to show the superority of FD-DeepLoc over a conventional CNN in 
 spatially-variant fitting case. This demo takes about 9 hours to train 2 networks and 30 minutes to do the field-dependent CRLB test. 
-The test dataset can be downloaded from [![image](https://user-images.githubusercontent.com/67769465/200456885-4526dc05-2174-4f9c-9052-d431b0180059.png)](https://zenodo.org/record/7299441#.Y2m4MWlBz30).
+The test dataset can be downloaded from [![image](https://user-images.githubusercontent.com/67769465/201120098-5c305182-afdf-4dbe-be81-5d28808389ef.png)
+](https://zenodo.org/record/7310921#.Y20MaGlBz30).
 
 
 

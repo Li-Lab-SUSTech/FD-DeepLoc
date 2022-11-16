@@ -29,8 +29,10 @@ class PSF_VECTOR_GPU:
         robust_training: bool
             If True, add small zernike disturbance to the simulated PSFs
         """
-
-        psf = CDLL("PSF_vector_gpu/psf_simu_gpu.dll", winmode=0)
+        try:
+            psf = CDLL("PSF_vector_gpu/psf_simu_gpu.dll", winmode=0)
+        except FileNotFoundError:
+            psf = CDLL("../../PSF_vector_gpu/psf_simu_gpu.dll", winmode=0)
 
         # psf = CDLL("F:/projects/FS_work/psf_simu_gpu_LTD/x64/Debug/psf_simu_gpu.dll", winmode=0)
 
