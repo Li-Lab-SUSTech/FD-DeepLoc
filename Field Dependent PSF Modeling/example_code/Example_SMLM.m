@@ -84,7 +84,7 @@ f = figure
 initPosition = f.Position;
 f.Position = [initPosition(1), initPosition(2)-900+initPosition(4),900, 900];
 
-for k=1:length(PSF_stack)
+for k=1:stacks_num
     subplot(7,7,k);
     imagesc(PSF_stack(:,:,k)) ;
     sub_title=title([ num2str((k-1)*z_step-z_depth/2),' nm']);
