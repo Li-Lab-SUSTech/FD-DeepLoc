@@ -62,7 +62,7 @@ predict. The test dataset can be downloaded from [![image](https://user-images.g
 4. `demo4` illustrates the common using pipeline of FD-DeepLoc on a FOV without field-dependent aberrations 
 (aberration maps are uniform). It is based on our experimental DMO-SaddlePoint PSF (1.2μm) NPC dataset
 (supplementary fig.5). The CoordConv is turned off as it will not learn any extra information from 
-the spatially-invariant training data. This demo takes about 5 hours to train a network and 10 minutes to predict. The test dataset can be downloaded from
+the spatially-invariant training data. This demo takes about 5 hours to train a network and tens of minutes to predict. The test dataset can be downloaded from
 [![image](https://user-images.githubusercontent.com/67769465/200457603-cc37c13e-109e-4289-981e-fd0e172fd83f.png)](https://zenodo.org/record/7299197#.Y2m6Q2lBz30).
 
 
