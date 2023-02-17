@@ -27,7 +27,7 @@ The notebook file `.ipynb` itself contains detailed instruction. And a general t
 1. Field-dependent aberration map calibration.
 2. Field-dependent deep-learning localization network (including training and inference examples)
 
-# Demo examples
+# Demo examples (applicable for release FD-DeepLoc-v1.0.0)
 There are 4 different demo notebooks in the folder `Field Dependent PSF Learning\demo_notebooks` to illustrate the 
 use of FD-DeepLoc. To run one demo, the user needs to download the corresponding test dataset using the link below and uncompress it under the 
 folder `demo_datasets`. For each demo example, we provide a training notebook `train.ipynp`, an inference notebook `inference.ipynb`, 
