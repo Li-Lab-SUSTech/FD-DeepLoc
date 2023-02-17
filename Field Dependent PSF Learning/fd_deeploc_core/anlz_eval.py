@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn.functional as func
 from torch.cuda.amp import autocast as autocast
@@ -77,12 +78,12 @@ def decode_func(model, images, field_xy, batch_size=100, z_scale=10, int_scale=1
         for k in infs.keys():
             infs[k] = np.vstack(infs[k])
 
-        # scale the predictions
-        infs['ZO'] = z_scale * infs['ZO']
-        infs['Int'] = int_scale * infs['Int']
-        if model.sig_pred:
-            infs['Int_sig'] = int_scale * infs['Int_sig']
-            infs['ZO_sig'] = z_scale * infs['ZO_sig']
+        # # scale the predictions
+        # infs['ZO'] = z_scale * infs['ZO']
+        # infs['Int'] = int_scale * infs['Int']
+        # if model.sig_pred:
+        #     infs['Int_sig'] = int_scale * infs['Int_sig']
+        #     infs['ZO_sig'] = z_scale * infs['ZO_sig']
         return infs
 
 
@@ -163,8 +164,74 @@ def rescale(arr_infs, rescale_bins=50, sig_3d=False):
             arr_infs['XO_ps'][inds] = uniformize(arr_infs['XO_ps'][inds]) + np.mean(arr_infs['XO_ps'][inds])
             arr_infs['YO_ps'][inds] = uniformize(arr_infs['YO_ps'][inds]) + np.mean(arr_infs['YO_ps'][inds])
 
+def rescale_fs(preds_array, pixel_size=[100, 100],rescale_bins=50, sig_3d=False):
+    """Rescales x and y offsets (inplace) so that they are distributed uniformly within [-0.5, 0.5] to correct for biased outputs.
 
-def array_to_list(infs, wobble=[0, 0], pix_nm=[100, 100], drifts=None, start_img=0, start_n=0):
+    Parameters
+    ----------
+    arr_infs: dict
+        Dictionary of arrays created with decode_func and nms_sampling
+    rescale_bins: int
+        The bias scales with the uncertainty of the localization. Therefore all detections are binned according to their predicted uncertainty.
+        Detections within different bins are then rescaled seperately. This specifies the number of bins.
+    sig_3d: bool
+        If true also the uncertainty in z when performing the binning
+    """
+    xo = preds_array[:, 11].copy()
+    yo = preds_array[:, 12].copy()
+
+    x_sig = preds_array[:, 7].copy()
+    y_sig = preds_array[:, 8].copy()
+    z_sig = preds_array[:, 9].copy()
+
+    x_sig_var = np.var(x_sig)
+    y_sig_var = np.var(y_sig)
+    z_sig_var = np.var(z_sig)
+
+    xo_rescale = xo.copy()
+    yo_rescale = yo.copy()
+
+    tot_sig = x_sig ** 2 + (np.sqrt(x_sig_var / y_sig_var) * y_sig) ** 2
+    if sig_3d:
+        tot_sig += (np.sqrt(x_sig_var / z_sig_var) * z_sig) ** 2
+
+    bins = np.interp(np.linspace(0, len(tot_sig), rescale_bins + 1), np.arange(len(tot_sig)), np.sort(tot_sig))
+
+    for i in range(rescale_bins):
+        inds = np.where((tot_sig > bins[i]) & (tot_sig < bins[i + 1]) & (tot_sig != 0))
+        xo_rescale[inds] = uniformize_fs(xo[inds]) + np.mean(xo[inds])
+        yo_rescale[inds] = uniformize_fs(yo[inds]) + np.mean(yo[inds])
+
+    x_rescale = preds_array[:,2]+(xo_rescale-xo)*pixel_size[0]
+    y_rescale = preds_array[:,3]+(yo_rescale-yo)*pixel_size[1]
+
+    preds_array = np.column_stack((preds_array[:,0:13],xo_rescale,yo_rescale, x_rescale, y_rescale))
+
+    return preds_array
+
+
+def uniformize_fs(x):
+    x = np.clip(x, -0.99, 0.99)
+
+    x_pdf = np.histogram(x, bins=np.linspace(-1, 1, 201))
+    x_cdf = np.cumsum(x_pdf[0]) / sum(x_pdf[0])
+
+    ind = (x + 1) / 2 * 200 - 1.  # linear transform x[-0.99, 0.99] into (0,198]
+    dec = ind - np.floor(ind)  # decimal part of ind
+    tmp1 = x_cdf[[int(i) + 1 for i in ind]]  # cdf( ceil(ind) -- [1,199] )
+    tmp2 = x_cdf[[int(i) for i in ind]]  # cdf( floor(ind) -- [0,198] )
+    x_re = dec * tmp1 + (1 - dec) * tmp2 - 0.5  # weighted average of cdf( floor(ind) ) and cdf( ceil(ind) ), equal to linear interpolation
+
+    # fig, axes = plt.subplots(3, 1)
+    # axes[0].hist(x, bins=np.linspace(-1, 1, 201))
+    # axes[1].plot(x_pdf[1][1:], x_cdf)
+    # axes[2].hist(x_re, bins=np.linspace(-1, 1, 201))
+    # plt.show()
+
+    return x_re
+
+
+def array_to_list(infs, wobble=[0, 0], pix_nm=[100, 100], z_scale=700, int_scale=5000, drifts=None, start_img=0, start_n=0):
     """Transform the the output of the model (dictionary of outputs at imaging resolution) into a list of predictions.
     
     Parameters
@@ -200,9 +267,6 @@ def array_to_list(infs, wobble=[0, 0], pix_nm=[100, 100], drifts=None, start_img
     pred_list = []
     count = 1 + start_n
 
-    num_areas = len(infs)
-    n = np.sqrt(num_areas)
-
     for i in range(len(samples)):
         pos = np.nonzero(infs['Samples_ps'][i])  # get the deterministic pixel position
         xo = infs['XO_ps'][i] - drifts[i, 1]
@@ -221,13 +285,16 @@ def array_to_list(infs, wobble=[0, 0], pix_nm=[100, 100], drifts=None, start_img
             pred_list.append([count, i + 1 + start_img,
                               (0.5 + pos[1][j] + xo[pos[0][j], pos[1][j]]) * pix_nm[0] + wobble[0],
                               (0.5 + pos[0][j] + yo[pos[0][j], pos[1][j]]) * pix_nm[1] + wobble[1],
-                              zo[pos[0][j], pos[1][j]], ints[pos[0][j], pos[1][j]],
+                              zo[pos[0][j], pos[1][j]] * z_scale, ints[pos[0][j], pos[1][j]] * int_scale,
                               p_nms[pos[0][j], pos[1][j]]])
             if 'XO_sig' in infs:
                 pred_list[-1] += [xos[pos[0][j], pos[1][j]] * pix_nm[0], yos[pos[0][j], pos[1][j]] * pix_nm[1],
-                                  zos[pos[0][j], pos[1][j]], int_sig[pos[0][j], pos[1][j]]]
+                                  zos[pos[0][j], pos[1][j]] * z_scale, int_sig[pos[0][j], pos[1][j]] * int_scale]
             else:
                 pred_list[-1] += [None, None, None, None]
+
+            pred_list[-1] += [xo[pos[0][j], pos[1][j]] , yo[pos[0][j], pos[1][j]] ]
+
             count += 1
 
     return pred_list
@@ -758,9 +825,8 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
     return perf_dict, matches
 
 
-def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, rescale_xy, pix_nm, plot_num,
-                wobble=[0, 0], start_field_pos=[0, 0], stack_interval=100000, divide_and_conquer=True, win_size=128,
-                padding=True, candi_thre=0.3, nms_thre=0.3):
+def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pix_nm, plot_num,
+                wobble=[0, 0], start_field_pos=[0, 0], win_size=128, padding=True, candi_thre=0.3, nms_thre=0.3):
     """ Analyze the SMLM images using FD-DeepLoc model
 
     Parameters
@@ -770,7 +836,7 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, rescale_xy, pix
     eval_imgs_all:
         Input images that need to be analyzed
     batch_size: int
-        Number of images in each batch
+        Number of images in each batch, set it small when GPU memory is limited.
     use_tqdm: bool
         Progress bar
     nms: bool
@@ -790,16 +856,11 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, rescale_xy, pix
         Start from the top left. For example, start_field_pos [102, 41] means the top left pixel (namely local position
         [0, 0]) of the input images is located at [102, 41] of the whole FOV. Thus CoordConv can get the
         global position of the input images.
-    stack_interval: int
-        Process the long-time frames by time interval. If RAM is out of memory, set it smaller.
-    divide_and_conquer: bool
-        Divide the large images into small sub-area images. This is necessary as large input images lead to GPU memory
-        error, this enables the network process the large images by sub-areas.
     win_size:
-        If divide_and_conquer=True, set the size of segmented areas, must be a multiple of 4 to avoid error when down-
-        sampling or up-sampling.
+        The whole images are analyzed in a divide and conquer strategy, set the size of segmented areas,
+        must be a multiple of 4 to avoid error when down-sampling or up-sampling, this size is limited by GPU memory.
     padding: bool
-        If divide_and_conquer=True, padding=True, this will cut a larger area (20 pixels) than win_size and traverse
+        If padding=True, this will cut a larger area (20 pixels) than win_size and traverse
         with overlap to avoid error from incomplete PSFs at margin.
     candi_thre:
         In the probability channel, only pixels with value>candi_thre will be treated as candidates for local maximum
@@ -813,239 +874,147 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, rescale_xy, pix
         'x_sig', 'y_sig', 'z_sig'
     """
     N = len(eval_imgs_all)
-    plot_data = []
-    preds_frames = []
-    for stack_num in range(int(np.ceil(N / stack_interval))):
-        eval_imgs_tmp = eval_imgs_all[stack_num * stack_interval: (stack_num + 1) * stack_interval if
-                        (stack_num + 1) * stack_interval < N else N]
 
-        start_img = stack_num * stack_interval
-        start_field = copy.deepcopy(start_field_pos)
-        h, w = eval_imgs_tmp.shape[1], eval_imgs_tmp.shape[2]
 
-        # enforce the image size to be multiple of 4, pad with estimated background. start_field_pos should be modified
-        # according to the padding, and field_xy for sub-area images should be modified too.
-        pad_h = 0
-        pad_w = 0
-        bg_test_whole_field = None
-        if (h % 4 != 0) or (w % 4 != 0):
-            bg_test_whole_field, _ = get_bg_stats(eval_imgs_tmp, percentile=50)
-            if h % 4 != 0:
-                new_h = (h // 4 + 1) * 4
-                pad_h = new_h - h
-                eval_imgs_tmp = np.pad(eval_imgs_tmp, [[0, 0], [pad_h, 0], [0, 0]],
-                                       mode='constant', constant_values=bg_test_whole_field)
-                start_field[1] -= pad_h
-                h += pad_h
-            if w % 4 != 0:
-                new_w = (w // 4 + 1) * 4
-                pad_w = new_w - w
-                eval_imgs_tmp = np.pad(eval_imgs_tmp, [[0, 0], [0, 0], [pad_w, 0]],
-                                       mode='constant', constant_values=bg_test_whole_field)
-                start_field[0] -= pad_w
-                w += pad_w
+    start_field = copy.deepcopy(start_field_pos)
+    h, w = eval_imgs_all.shape[1], eval_imgs_all.shape[2]
 
-        n_per_img = 0
+    # enforce the image size to be multiple of 4, pad with estimated background. start_field_pos should be modified
+    # according to the padding, and field_xy for sub-area images should be modified too.
+    pad_h = 0
+    pad_w = 0
+    if (h % 4 != 0) or (w % 4 != 0):
+        bg_test_whole_field, _ = get_bg_stats(eval_imgs_all, percentile=50)
+        if h % 4 != 0:
+            new_h = (h // 4 + 1) * 4
+            pad_h = new_h - h
+            eval_imgs_all = np.pad(eval_imgs_all, [[0, 0], [pad_h, 0], [0, 0]],
+                                   mode='constant', constant_values=bg_test_whole_field)
+            start_field[1] -= pad_h
+            h += pad_h
+        if w % 4 != 0:
+            new_w = (w // 4 + 1) * 4
+            pad_w = new_w - w
+            eval_imgs_all = np.pad(eval_imgs_all, [[0, 0], [0, 0], [pad_w, 0]],
+                                   mode='constant', constant_values=bg_test_whole_field)
+            start_field[0] -= pad_w
+            w += pad_w
 
-        if divide_and_conquer:
-            area_rows = int(np.ceil(h / win_size))
-            area_columns = int(np.ceil(w / win_size))
+    area_rows = int(np.ceil(h / win_size))
+    area_columns = int(np.ceil(w / win_size))
 
-            images_areas = []
-            origin_areas_list = []
-            areas_list = []
+    images_areas = []
+    origin_areas_list = []
+    areas_list = []
+    for i in range(area_rows):
+        for j in range(area_columns):
+            x_origin = j * win_size
+            y_origin = i * win_size
+            x_origin_end = w if x_origin + win_size > w else x_origin + win_size
+            y_origin_end = h if y_origin + win_size > h else y_origin + win_size
             if padding:
-                for i in range(area_rows):
-                    for j in range(area_columns):
-                        x_origin = j * win_size
-                        y_origin = i * win_size
-                        x_origin_end = w if x_origin + win_size > w else x_origin + win_size
-                        y_origin_end = h if y_origin + win_size > h else y_origin + win_size
-
-                        x_start = j * win_size if j * win_size - 20 < 0 else j * win_size - 20
-                        y_start = i * win_size if i * win_size - 20 < 0 else i * win_size - 20
-                        x_end = w if x_origin + win_size + 20 > w else x_origin + win_size + 20
-                        y_end = h if y_origin + win_size + 20 > h else y_origin + win_size + 20
-
-                        sub_imgs_tmp = eval_imgs_tmp[:, y_start:y_end, x_start:x_end]
-                        # set the background of eval_images the same as training set
-                        bg_test, _ = get_bg_stats(sub_imgs_tmp,percentile=50)
-                        sub_imgs_tmp = sub_imgs_tmp - bg_test + model.dat_generator.simulation_pars['backg']
-                        images_areas.append(sub_imgs_tmp)
-
-                        areas_list.append([x_start + start_field[0], x_end - 1 + start_field[0],
-                                           y_start + start_field[1], y_end - 1 + start_field[1]])
-
-                        origin_areas_list.append([x_origin + start_field[0], x_origin_end - 1 + start_field[0],
-                                                  y_origin + start_field[1], y_origin_end - 1 + start_field[1]])
+                x_start = j * win_size if j * win_size - 20 < 0 else j * win_size - 20
+                y_start = i * win_size if i * win_size - 20 < 0 else i * win_size - 20
+                x_end = w if x_origin + win_size + 20 > w else x_origin + win_size + 20
+                y_end = h if y_origin + win_size + 20 > h else y_origin + win_size + 20
             else:
-                for i in range(area_rows):
-                    for j in range(area_columns):
-                        x_start = j * win_size
-                        y_start = i * win_size
-                        x_end = w if x_start + win_size > w else x_start + win_size
-                        y_end = h if y_start + win_size > h else y_start + win_size
+                x_start = j * win_size
+                y_start = i * win_size
+                x_end = w if x_start + win_size > w else x_start + win_size
+                y_end = h if y_start + win_size > h else y_start + win_size
 
-                        sub_imgs_tmp = eval_imgs_tmp[:, y_start:y_end, x_start:x_end]
-                        # set the background of eval_images the same as training set
-                        bg_test, _ = get_bg_stats(sub_imgs_tmp,percentile=50)
-                        sub_imgs_tmp = sub_imgs_tmp - bg_test + model.dat_generator.simulation_pars['backg']
-                        images_areas.append(sub_imgs_tmp)
+            # set the background of eval_images the same as training set
+            sub_imgs_tmp = eval_imgs_all[:, y_start:y_end, x_start:x_end]
+            bg_test, _ = get_bg_stats(sub_imgs_tmp, percentile=50)
+            sub_imgs_tmp = sub_imgs_tmp - bg_test + model.dat_generator.simulation_pars['backg']
 
-                        areas_list.append([x_start + start_field[0], x_end - 1 + start_field[0],
-                                           y_start + start_field[1], y_end - 1 + start_field[1]])
+            images_areas.append(sub_imgs_tmp)
+            areas_list.append([x_start + start_field[0], x_end - 1 + start_field[0],
+                               y_start + start_field[1], y_end - 1 + start_field[1]])
+            origin_areas_list.append([x_origin + start_field[0], x_origin_end - 1 + start_field[0],
+                                      y_origin + start_field[1], y_origin_end - 1 + start_field[1]])
 
-                        origin_areas_list.append([x_start + start_field[0], x_end - 1 + start_field[0],
-                                                  y_start + start_field[1], y_end - 1 + start_field[1]])
-
-            if plot_num:
-                if 0 <= plot_num - 1 - start_img < N:
-                    plot_areas = [{} for i in range(area_rows * area_columns + 1)]
-                    plot_areas[0]['raw_img'] = eval_imgs_tmp[plot_num - 1 - start_img]
-                    plot_areas[0]['rows'] = area_rows
-                    plot_areas[0]['columns'] = area_columns
-                    plot_areas[0]['win_size'] = win_size
-                else:
-                    plot_areas = []
-            else:
-                plot_areas = []
-
-            del eval_imgs_tmp
-
-            preds_areas = []
-
-            for i in range(area_rows * area_columns):
-                field_xy = torch.tensor(areas_list[i])
-                # field_xy = torch.tensor(areas_list[area_rows*area_columns-1-i])+\
-                #            torch.tensor([100,100,100,100])  # test wrong global position
-
-                if use_tqdm:
-                    # print('\nprocessing area:', str(i + 1), '/', str(area_rows * area_columns),
-                    #       ', input field_xy:', str(cpu(field_xy)),
-                    #       ', use_coordconv:', str(model.net_pars['use_coordconv']),
-                    #       ', retain locs in area:', str(origin_areas_list[i]),
-                    #       ', aber_map size:', str(model.dat_generator.psf_pars['aber_map'].shape) )
-                    print('{}{}{}{}{}{}{}{}{}{}{}{}'.format('\nprocessing area:', i + 1, '/', area_rows * area_columns,
-                                                            ', input field_xy:', cpu(field_xy), ', use_coordconv:',
-                                                            model.net_pars['use_coordconv'], ', retain locs in area:',
-                                                            origin_areas_list[i], ', aber_map size:',
-                                                            model.dat_generator.psf_pars['aber_map'].shape))
-                else:
-                    # print('\rprocessing area:', str(i + 1), '/', str(area_rows * area_columns),
-                    #       ', input field_xy:', str(cpu(field_xy)),
-                    #       ', use_coordconv:', str(model.net_pars['use_coordconv']),
-                    #       ', retain locs in area:', str(origin_areas_list[i]),
-                    #       ', aber_map size:', str(model.dat_generator.psf_pars['aber_map'].shape), end='')
-                    print('{}{}{}{}{}{}{}{}{}{}{}{}'.format('\rprocessing area:',i+1, '/', area_rows * area_columns,
-                                                            ', input field_xy:', cpu(field_xy), ', use_coordconv:',
-                                                            model.net_pars['use_coordconv'],', retain locs in area:',
-                                                            origin_areas_list[i],', aber_map size:',
-                                                            model.dat_generator.psf_pars['aber_map'].shape), end='')
-
-                arr_infs = decode_func(model, images_areas[0],
-                                       field_xy=field_xy,
-                                       batch_size=batch_size, use_tqdm=use_tqdm,
-                                       z_scale=model.dat_generator.psf_pars['z_scale'],
-                                       int_scale=model.dat_generator.psf_pars['ph_scale'])
-
-                nms_sampling(arr_infs, threshold=nms_thre, candi_thre=candi_thre, batch_size=batch_size, nms=nms, nms_cont=False)
-
-                if rescale_xy:
-                    rescale(arr_infs, 20, sig_3d=False)  # 根据sigma来rescale xyoffset
-
-                preds_list = array_to_list(arr_infs, wobble=wobble, pix_nm=pix_nm, start_img=start_img)
-
-                if padding:
-                    # drop the molecules in the overlap between sub-areas (padding), shift the remaining molecules
-                    # back to correct positions.
-                    preds_list = padding_shift(origin_areas_list[i], areas_list[i], preds_list, pix_nm=pix_nm)
-
-                preds_areas.append(preds_list)
-
-                # calculate the n_per_image, need to take account for the padding
-                x_index = int((torch.tensor(origin_areas_list[i]) - torch.tensor(areas_list[i]))[0])
-                y_index = int((torch.tensor(origin_areas_list[i]) - torch.tensor(areas_list[i]))[2])
-                n_per_img += arr_infs['Probs'][:, y_index: y_index + win_size,
-                             x_index: x_index + win_size].sum(-1).sum(-1).mean()
-
-                if plot_num:
-                    if 0 <= plot_num - 1 - start_img < N:
-                        for k in arr_infs.keys():
-                            x_index = int((torch.tensor(origin_areas_list[i]) - torch.tensor(areas_list[i]))[0])
-                            y_index = int((torch.tensor(origin_areas_list[i]) - torch.tensor(areas_list[i]))[2])
-                            plot_areas[i + 1][k] = copy.deepcopy(arr_infs[k][plot_num - 1 - start_img,
-                                                                 y_index: y_index + win_size,
-                                                                 x_index: x_index + win_size])
-
-                del arr_infs
-                del images_areas[0]
-
-            print('')
-
-            plot_data += plot_areas
-            preds_frames += post_process(preds_areas, h, w, pixel_size=pix_nm, win_size=win_size)
-
-        # divide_and_conquer = False
+    if plot_num:
+        if 0 <= plot_num - 1 < N:
+            plot_areas = [{} for i in range(area_rows * area_columns + 1)]
+            plot_areas[0]['raw_img'] = eval_imgs_all[plot_num - 1]
+            plot_areas[0]['rows'] = area_rows
+            plot_areas[0]['columns'] = area_columns
+            plot_areas[0]['win_size'] = win_size
         else:
-            if bg_test_whole_field is None:
-                bg_test_whole_field, _ = get_bg_stats(eval_imgs_tmp,percentile=50)
-            eval_imgs_tmp = eval_imgs_tmp - bg_test_whole_field + model.dat_generator.simulation_pars['backg']
+            plot_areas = []
+    else:
+        plot_areas = []
 
-            if plot_num:
-                if 0 <= plot_num - 1 - start_img < N:
-                    plot_areas = [{} for i in range(2)]
-                    plot_areas[0]['raw_img'] = eval_imgs_tmp[plot_num - 1 - start_img]
-                    plot_areas[0]['rows'] = 1
-                    plot_areas[0]['columns'] = 1
-                    plot_areas[0]['win_size'] = max(eval_imgs_tmp.shape[1], eval_imgs_tmp.shape[2])
-                else:
-                    plot_areas = []
-            else:
-                plot_areas = []
+    del eval_imgs_all
 
-            field_xy = torch.tensor([start_field[0], start_field[0] + w - 1, start_field[1], start_field[1] + h - 1])
-
-            print('field_xy:', cpu(field_xy), ', use_coordconv:', model.net_pars['use_coordconv'],
-                  ', aber_map_size:', str(model.dat_generator.psf_pars['aber_map'].shape) )
-
-            arr_infs = decode_func(model, eval_imgs_tmp,
-                                   field_xy=field_xy,
-                                   batch_size=batch_size, use_tqdm=use_tqdm,
-                                   z_scale=model.dat_generator.psf_pars['z_scale'],
+    n_per_img = 0
+    preds_areas = []
+    preds_areas_rescale = []
+    for i in range(area_rows * area_columns):
+        field_xy = torch.tensor(areas_list[i])
+        # field_xy = torch.tensor(areas_list[area_rows*area_columns-1-i])+\
+        #            torch.tensor([100,100,100,100])  # test wrong global position
+        if use_tqdm:
+            print('{}{}{}{}{}{}{}{}{}{}{}{}'.format('\nprocessing area:', i + 1, '/', area_rows * area_columns,
+                                                    ', input field_xy:', cpu(field_xy), ', use_coordconv:',
+                                                    model.net_pars['use_coordconv'], ', retain locs in area:',
+                                                    origin_areas_list[i], ', aber_map size:',
+                                                    model.dat_generator.psf_pars['aber_map'].shape))
+        else:
+            print('{}{}{}{}{}{}{}{}{}{}{}{}'.format('\rprocessing area:',i+1, '/', area_rows * area_columns,
+                                                    ', input field_xy:', cpu(field_xy), ', use_coordconv:',
+                                                    model.net_pars['use_coordconv'],', retain locs in area:',
+                                                    origin_areas_list[i],', aber_map size:',
+                                                    model.dat_generator.psf_pars['aber_map'].shape), end='')
+        arr_infs = decode_func(model, images_areas[0],
+                               field_xy=field_xy,
+                               batch_size=batch_size, use_tqdm=use_tqdm,
+                               z_scale=model.dat_generator.psf_pars['z_scale'],
+                               int_scale=model.dat_generator.psf_pars['ph_scale'])
+        nms_sampling(arr_infs, threshold=nms_thre, candi_thre=candi_thre, batch_size=batch_size, nms=nms, nms_cont=False)
+        preds_list = array_to_list(arr_infs, wobble=wobble, pix_nm=pix_nm, z_scale=model.dat_generator.psf_pars['z_scale'],
                                    int_scale=model.dat_generator.psf_pars['ph_scale'])
+        if padding:
+            # drop the molecules in the overlap between sub-areas (padding), shift the remaining molecules back to correct positions.
+            preds_list = padding_shift(origin_areas_list[i], areas_list[i], preds_list, pix_nm=pix_nm)
+        preds_areas.append(preds_list)
 
-            nms_sampling(arr_infs, threshold=nms_thre, candi_thre=candi_thre, batch_size=batch_size, nms=nms, nms_cont=False)
+        # calculate the n_per_image, need to take account for the padding
+        x_index = int((torch.tensor(origin_areas_list[i]) - torch.tensor(areas_list[i]))[0])
+        y_index = int((torch.tensor(origin_areas_list[i]) - torch.tensor(areas_list[i]))[2])
+        n_per_img += arr_infs['Probs'][:, y_index: y_index + win_size, x_index: x_index + win_size].sum(-1).sum(-1).mean()
 
-            if rescale_xy:
-                rescale(arr_infs, 20, sig_3d=False)  # rescale xyoffset using uncertainty
+        if plot_num:
+            if 0 <= plot_num - 1 < N:
+                for k in arr_infs.keys():
+                    x_index = int((torch.tensor(origin_areas_list[i]) - torch.tensor(areas_list[i]))[0])
+                    y_index = int((torch.tensor(origin_areas_list[i]) - torch.tensor(areas_list[i]))[2])
+                    plot_areas[i + 1][k] = copy.deepcopy(arr_infs[k][plot_num - 1,
+                                                         y_index: y_index + win_size,
+                                                         x_index: x_index + win_size])
+        # if rescale_xy:
+        #     rescale(arr_infs, 20, sig_3d=False)  # rescale xy offset according to prediction uncertainty
+        #     preds_list_rescale = array_to_list(arr_infs, wobble=wobble, pix_nm=pix_nm, z_scale=model.dat_generator.psf_pars['z_scale'],
+        #                            int_scale=model.dat_generator.psf_pars['ph_scale'], start_img=start_img)
+        #     if padding:
+        #         preds_list_rescale = padding_shift(origin_areas_list[i], areas_list[i], preds_list_rescale, pix_nm=pix_nm)
+        #     preds_areas_rescale.append(preds_list_rescale)
 
-            preds_list = array_to_list(arr_infs, wobble=wobble, pix_nm=pix_nm, start_img=start_img)
+        del arr_infs
+        del images_areas[0]
+    print('')
 
-            n_per_img += arr_infs['Probs'].sum(-1).sum(-1).mean()
+    preds_frames = post_process(preds_areas, h, w, pixel_size=pix_nm, win_size=win_size, pad_w=pad_w, pad_h=pad_h)
+    # preds_frames_rescale = post_process(preds_areas_rescale, h, w, pixel_size=pix_nm, win_size=win_size, pad_w=pad_w, pad_h=pad_h) if rescale_xy else []
 
-            if plot_num:
-                if 0 <= plot_num - 1 - start_img < N:
-                    for k in arr_infs.keys():
-                        plot_areas[1][k] = copy.deepcopy(arr_infs[k][plot_num - 1 - start_img])
-
-            del eval_imgs_tmp
-            del arr_infs
-
-            plot_data += plot_areas
-            preds_frames += preds_list
-
-    # if modification was made to the raw images to have a size of multiple of 4, this resulted in offsets.
-    preds_frames = np.array(preds_frames, dtype=np.float32)
-    if len(preds_frames):
-        preds_frames[:, 2] -= pad_w * pix_nm[0]
-        preds_frames[:, 3] -= pad_h * pix_nm[1]
-    preds_raw = sorted(preds_frames.tolist(), key=itemgetter(1))
-
-    return preds_raw, n_per_img, plot_data
+    return preds_frames, n_per_img, plot_areas
 
 
-def post_process(preds_areas, height, width, pixel_size=[100, 100], win_size=128):
-    """transform the sub-area coordinate to whole-filed coordinate"""
+def post_process(preds_areas, height, width, pixel_size=[100, 100], win_size=128, pad_w=0, pad_h=0):
+    """transform the sub-area coordinate to whole-filed coordinate, correct the modification that made the raw images
+    to have a size of multiple of 4, which resulted in offsets."""
+
     rows = int(np.ceil(height / win_size))
     columns = int(np.ceil(width / win_size))
     preds = []
@@ -1058,7 +1027,12 @@ def post_process(preds_areas, height, width, pixel_size=[100, 100], win_size=128
             tmp[j][3] += field_xy[2] * pixel_size[1]
         preds = preds + tmp
 
-    preds = sorted(preds, key=itemgetter(1))
+    # if modification was made to the raw images to have a size of multiple of 4, this resulted in offsets.
+    preds = np.array(preds, dtype=np.float32)
+    if len(preds):
+        preds[:, 2] -= pad_w * pixel_size[0]
+        preds[:, 3] -= pad_h * pixel_size[1]
+    preds = sorted(preds.tolist(), key=itemgetter(1))
 
     return preds
 
@@ -1074,27 +1048,23 @@ def padding_shift(origin_areas, padded_areas, preds_list, pix_nm):
     else:
         y_offset = 20
 
+    preds_shift = []
     for i in range(len(preds_list)):
         preds_list[i][2] -= x_offset * pix_nm[0]
         preds_list[i][3] -= y_offset * pix_nm[1]
-
-    preds_shift = []
-    for j in range(len(preds_list)):
-        if preds_list[j][2] < 0 or preds_list[j][3] < 0 or \
-                preds_list[j][2] > (origin_areas[1] - origin_areas[0] + 1) * pix_nm[0] or \
-                preds_list[j][3] > (origin_areas[3] - origin_areas[2] + 1) * pix_nm[1]:
+        if preds_list[i][2] < 0 or preds_list[i][3] < 0 or \
+                preds_list[i][2] > (origin_areas[1] - origin_areas[0] + 1) * pix_nm[0] or \
+                preds_list[i][3] > (origin_areas[3] - origin_areas[2] + 1) * pix_nm[1]:
             continue
-
-        preds_shift.append(preds_list[j])
+        preds_shift.append(preds_list[i])
 
     return preds_shift
 
 
-def read_bigtiff_and_predict(model, image_path, stack_giga=0.5, batch_size=10, use_tqdm=True,
+def read_bigtiff_and_predict(model, image_path, num_to_anlz, stack_giga=0.5, batch_size=10, use_tqdm=True,
                              nms=True, candi_thre=0.3, nms_thre=0.3,
-                             rescale_xy=False, wobble=[0, 0], pixel_size=[100,100], plot_num=None,
-                             start_field_pos=[0, 0], stack_interval=100000, divide_and_conquer=True,
-                             win_size=256, padding=True, save_path='./pred_list.csv'):
+                             rescale_xy=False, wobble=[0, 0], pixel_size=[100, 100], plot_num=None,
+                             start_field_pos=[0, 0], win_size=256, padding=True, save_path='pred_list.csv'):
     """ Analyze the SMLM images using FD-DeepLoc model
 
     Parameters
@@ -1103,10 +1073,12 @@ def read_bigtiff_and_predict(model, image_path, stack_giga=0.5, batch_size=10, u
         FD-DeepLoc model
     image_path:
         Path of images (tiff) that need to be analyzed
+    num_to_anlz:
+        Number of first images to be analyzed, if None, all images will be analyzed
     stack_giga:
         As large-FOV image analysis needs a lot of RAM, we load and analyze SMLM images by stack_giga (Gb) sequentially.
     batch_size: int
-        Number of images in each batch
+        Number of images in each batch, set it small when GPU memory is limited.
     use_tqdm: bool
         Progress bar
     nms: bool
@@ -1126,16 +1098,11 @@ def read_bigtiff_and_predict(model, image_path, stack_giga=0.5, batch_size=10, u
         Start from the top left. For example, start_field_pos [102, 41] means the upper left pixel (namely local position
         [0, 0]) of the input images is located at [102, 41] of the whole FOV. Thus CoordConv can get the
         global position of the input images.
-    stack_interval: int
-        Process the long-time frames by time interval. If RAM is out of memory, set it smaller.
-    divide_and_conquer: bool
-        Divide the large images into small sub-area images. This is necessary as large input images lead to GPU memory
-        error, this enables the model process the large images by sub-areas.
     win_size:
-        If divide_and_conquer=True, set the size of segmented areas, must be a multiple of 4 to avoid error when down-
-        sampling or up-sampling.
+        The whole images are analyzed in a divide and conquer strategy, set the size of segmented areas,
+        must be a multiple of 4 to avoid error when down-sampling or up-sampling, this size is limited by GPU memory.
     padding: bool
-        If divide_and_conquer=True, padding=True, this will cut a larger area (20 pixels) than win_size and traverse
+        If padding=True, this will cut a larger area (20 pixels) than win_size and traverse
         with overlap to avoid error from incomplete PSFs at margin.
     candi_thre:
         In the probability channel, only pixels with value>candi_thre will be treated as candidates for local maximum
@@ -1162,76 +1129,85 @@ def read_bigtiff_and_predict(model, image_path, stack_giga=0.5, batch_size=10, u
     else:
         last_frame_num = 0
         preds_empty = []
-        write_csv(preds_empty, name=save_path, write_gt=False, append=False)
+        write_csv(preds_empty, name=save_path, write_gt=False, append=False, write_rescale=False)
 
     with TiffFile(image_path, is_ome=True) as tif:
         total_shape = tif.series[0].shape
         occu_mem = total_shape[0] * total_shape[1] * total_shape[2] * 16 / (1024 ** 3) / 8
         stack_num = int(np.ceil(occu_mem / stack_giga))
         frames_per_stack = int(total_shape[0] // stack_num)
-
         fov_size = [total_shape[2] * pixel_size[0], total_shape[1] * pixel_size[1]]
+        num_to_analyze = total_shape[0] if (num_to_anlz == None) or (num_to_anlz > total_shape[0]) else num_to_anlz
 
+        # make the plan to read image stack sequentially
         frames_ind = []
         i = 0
-        while (i + 1) * frames_per_stack + last_frame_num <= total_shape[0]:
+        while (i + 1) * frames_per_stack + last_frame_num <= num_to_analyze:
             frames_ind.append(range(i * frames_per_stack + last_frame_num, (i + 1) * frames_per_stack + last_frame_num))
             i += 1
-        if (i * frames_per_stack + last_frame_num < total_shape[0]) &\
-                ((i + 1) * frames_per_stack + last_frame_num > total_shape[0]):
-            frames_ind.append(range(i * frames_per_stack + last_frame_num, total_shape[0]))
+        if (i * frames_per_stack + last_frame_num < num_to_analyze) &\
+                ((i + 1) * frames_per_stack + last_frame_num > num_to_analyze):
+            frames_ind.append(range(i * frames_per_stack + last_frame_num, num_to_analyze))
 
+        # begin inference
+        time_cost_iter = np.inf
         for tif_ind in range(len(frames_ind)):
+            time_start = time.time()
+
             eval_images = tif.asarray(key=frames_ind[tif_ind], series=0)
+            time_cost_read = time.time()-time_start
             if len(eval_images.shape) == 2:
                 eval_images = eval_images[np.newaxis, :, :]
-            print('{}{}{}{}{}{}{}{}{}{}'.format('stack: ', tif_ind + 1, '/', len(frames_ind), ', contain imgs: ',
-                                                eval_images.shape[0], ', already analyzed:', frames_ind[tif_ind].start,
-                                                '/', total_shape[0]))
 
-            # print('stack:', tif_ind + 1, '/', len(frames_ind), ', contain imgs:', eval_images.shape[0],
-            #       'finished:', frames_ind[tif_ind].start,'/',total_shape[0])
+            print('{}{}{}{}{}{}{}{}{}{}{}{:.2f}{}{:.2f}'.format('stack: ', tif_ind + 1, '/', len(frames_ind), ', contain imgs: ',
+                                                eval_images.shape[0], ', already analyzed: ', frames_ind[tif_ind].start,
+                                                '/', num_to_analyze, ', ETA (min): ', time_cost_iter/frames_per_stack
+                                                *(num_to_analyze-frames_ind[tif_ind].start)/60,', read images (min): ', time_cost_read/eval_images.shape[0]
+                                                *(num_to_analyze-frames_ind[tif_ind].start)/60))
 
             # # only process specific subarea of the image
             # eval_images = eval_images[:, 48:48+256, 436:436+256]
-
-            # fov_size = [eval_images.shape[2] * pixel_size[0], eval_images.shape[1] * pixel_size[1]]
 
             # the recognition process
             with autocast():  # speed up, but with precision loss
                 preds_tmp, n_per_img, plot_data = recognition(model=model, eval_imgs_all=eval_images,
                                                               batch_size=batch_size,
                                                               use_tqdm=use_tqdm,
-                                                              nms=nms, rescale_xy=rescale_xy,
+                                                              nms=nms,
                                                               wobble=wobble,
                                                               pix_nm=pixel_size,
                                                               plot_num=plot_num,
                                                               start_field_pos=start_field_pos,
-                                                              stack_interval=stack_interval,
-                                                              divide_and_conquer=divide_and_conquer,
                                                               win_size=win_size, padding=padding,
                                                               candi_thre=candi_thre, nms_thre=nms_thre)
 
             preds_tmp = np.array(preds_tmp)
             preds_tmp[:, 1] += frames_ind[tif_ind].start
-            write_csv(preds_tmp.tolist(), name=save_path, write_gt=False, append=True)
+            write_csv(preds_tmp.tolist(), name=save_path, write_gt=False, append=True, write_rescale=False)
+            # if rescale_xy:
+            #     preds_tmp_rescale = np.array(preds_tmp_rescale)
+            #     preds_tmp_rescale[:, 1] += frames_ind[tif_ind].start
+            #     write_csv(preds_tmp_rescale.tolist(), name='Rescale_'+save_path, write_gt=False, append=True)
 
-            # preds.append(preds_tmp)
-    # preds_raw = []
-    # for i in range(len(frames_ind)):
-    #     tmp = np.array(preds[i])
-    #     tmp[:, 1] = tmp[:, 1] + last_tmp[-1, 1] if i > 0 else tmp[:, 1]
-    #     preds_raw = preds_raw + tmp.tolist()
-    #     last_tmp = tmp
+            time_cost_iter = time.time()-time_start
+
+        if rescale_xy:
+            time_start = time.time()
+            print('applying histogram equalization to the xy offsets to avoid grid artifacts in the difficult conditions (low SNR, high density, etc.)\n'
+                  'replace the original xnano and ynano with x_rescale and y_rescale')
+            preds_norescale = read_csv(save_path)
+            preds_rescale = rescale_fs(preds_norescale,pixel_size = pixel_size,rescale_bins=20,sig_3d=True)
+            write_csv(preds_rescale.tolist(), name=save_path, write_gt=False, append=False, write_rescale=True)
+            print('{}{:.2f}'.format('histogram equalization finished, time cost (min): ', (time.time()-time_start)/60))
+
     print('analysis finished ! the file containing results is:', save_path)
 
-    return total_shape, fov_size
+    return num_to_analyze, fov_size
 
 
 def check_specific_frame_output(plot_num, model, image_path, eval_csv=None,
-                                nms=True, candi_thre=0.3, nms_thre=0.3, rescale_xy=False, pixel_size=[100,100],
-                                start_field_pos=[0, 0], divide_and_conquer=True,
-                                win_size=256, padding=True):
+                                nms=True, candi_thre=0.3, nms_thre=0.3, pixel_size=[100,100],
+                                start_field_pos=[0, 0], win_size=256, padding=True):
     """ Check the network output of a specified single frame.
 
     Parameters
@@ -1295,13 +1271,10 @@ def check_specific_frame_output(plot_num, model, image_path, eval_csv=None,
                                                           batch_size=1,
                                                           use_tqdm=False,
                                                           nms=nms, candi_thre=candi_thre, nms_thre=nms_thre,
-                                                          rescale_xy=rescale_xy,
                                                           wobble=[0,0],
                                                           pix_nm=pixel_size,
                                                           plot_num=5,
                                                           start_field_pos=start_field_pos,
-                                                          stack_interval=20000,
-                                                          divide_and_conquer=divide_and_conquer,
                                                           win_size=win_size, padding=padding)
     plot_sample_predictions(model, plot_infs=plot_data, eval_csv=eval_csv, plot_num=plot_num,
                             fov_size=fov_size, pixel_size=pixel_size)
@@ -1518,12 +1491,11 @@ def test_local_CRLB(model, test_pos, test_photons, test_bg, Nmol=25, use_train_c
     # compare network's prediction with CRLB
     preds_raw, n_per_img, _ = recognition(model=model, eval_imgs_all=data_buffer,
                                           batch_size=model.evaluation_pars['batch_size'], use_tqdm=True,
-                                          nms=True, candi_thre=0.3, nms_thre=0.7, rescale_xy=False,
+                                          nms=True, candi_thre=0.3, nms_thre=0.7,
                                           pix_nm=model.dat_generator.psf_pars['pixel_size_xy'],
                                           plot_num=None,
                                           start_field_pos=[test_pos[0] - np.floor(Npixels / 2),
                                                            test_pos[1] - np.floor(Npixels / 2)],
-                                          stack_interval=200000, divide_and_conquer=False,
                                           win_size=model.dat_generator.simulation_pars['train_size'],
                                           padding=True)
 

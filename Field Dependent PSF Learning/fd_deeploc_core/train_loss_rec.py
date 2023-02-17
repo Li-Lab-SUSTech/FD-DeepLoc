@@ -1,6 +1,7 @@
 import torch.nn as nn
 import numpy as np
 import torch
+
 from local_utils import *
 
 
@@ -226,7 +227,11 @@ class RecFuncs:
             fm_out = self.frame_module(scaled_x.reshape([-1, 1, img_h, img_w]), field_xy, aber_map_size) \
                 .reshape(-1, self.n_filters * self.n_inp, img_h, img_w)
 
-        cm_in = fm_out
+        # cm_in = fm_out
+
+        # layernorm
+        fm_out_LN = nn.functional.layer_norm(fm_out, normalized_shape=[self.n_filters * self.n_inp, img_h, img_w])
+        cm_in = fm_out_LN
 
         cm_out = self.context_module(cm_in, field_xy, aber_map_size)
         outputs = self.out_module.forward(cm_out, field_xy, aber_map_size)

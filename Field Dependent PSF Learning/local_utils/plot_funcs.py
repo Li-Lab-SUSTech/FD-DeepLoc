@@ -13,8 +13,7 @@ import PIL
 from PIL import ImageEnhance
 from PIL import ImageTk
 
-from local_utils.utils import *
-from local_utils.csv_utils import *
+from .utils import *
 
 
 def plot_od(od, label=None, col=None):
@@ -235,7 +234,7 @@ def plot_sample_predictions(model, plot_infs, eval_csv, plot_num, fov_size, pixe
     # plt.figure()
     # plt.imshow(datas[1])
     # plt.tight_layout()
-    plt.show()
+    plt.show(block=True)
 
 
 
@@ -252,7 +251,7 @@ def plot_train_record(model):
     plt.subplot(3,3,9);plot_od(model.recorder['cost_hist']);plt.xlabel('iterations');plt.ylabel('cost')
     # plt.subplots_adjust(wspace=0.5,hspace=0.5)
     # plt.tight_layout()
-    plt.show()
+    plt.show(block=True)
 
 def plot_preds_distribution(preds,preds_final):
     fig,axes = plt.subplots(2,2)

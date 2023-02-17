@@ -5,7 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn as nn
 from copy import deepcopy
-from local_utils import *
+
+from .utils import *
 
 
 class FreeDipolePSF_torch:

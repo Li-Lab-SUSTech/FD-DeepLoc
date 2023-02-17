@@ -7,7 +7,9 @@ import scipy.stats
 from matplotlib import pyplot as plt
 from operator import itemgetter
 import random
-from local_utils import *
+
+from .local_tifffile import *
+
 
 def gpu(x):
     '''Transforms numpy array or torch tensor it torch.cuda.FloatTensor'''

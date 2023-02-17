@@ -42,7 +42,7 @@ def read_csv(path, flip_z=False, z_fac=1, pix_scale=[1, 1], drift_txt=None):
     return preds
 
 
-def write_csv(pred_list, name, write_gt=False, append=False):
+def write_csv(pred_list, name, write_gt=False, append=False, write_rescale=False):
     """Writes a csv_file with columns: 'localizatioh', 'frame', 'x', 'y', 'z', 'intensity','x_sig','y_sig','z_sig'
     
     Parameters
@@ -55,18 +55,26 @@ def write_csv(pred_list, name, write_gt=False, append=False):
     if write_gt:
         with open(name, 'w', newline='') as csvfile:
             csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-            csvwriter.writerow(['x_gt', 'y_gt', 'z_gt', 'intensity_gt','x_pred','y_pred','z_pred',
-                                'intensity_pred','nms_p', 'x_sig', 'y_sig', 'z_sig'])
+            csvwriter.writerow(['x_gt', 'y_gt', 'z_gt', 'intensity_gt', 'x_pred', 'y_pred', 'z_pred',
+                                'intensity_pred', 'nms_p', 'x_sig', 'y_sig', 'z_sig'])
             for p in pred_list:
                 csvwriter.writerow([repr(f) for f in p])
     else:
         if not append:
-            with open(name, 'w', newline='') as csvfile:
-                csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-                csvwriter.writerow(['Ground-truth', 'frame', 'xnano', 'ynano', 'znano', 'intensity','nms_p', 'x_sig',
-                                    'y_sig', 'z_sig','I_sig'])
-                for p in pred_list:
-                    csvwriter.writerow([repr(f) for f in p])
+            if not write_rescale:
+                with open(name, 'w', newline='') as csvfile:
+                    csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+                    csvwriter.writerow(['Ground-truth', 'frame', 'xnm', 'ynm', 'znm', 'intensity', 'nms_p', 'x_sig',
+                                        'y_sig', 'z_sig', 'I_sig','xo','yo'])
+                    for p in pred_list:
+                        csvwriter.writerow([repr(f) for f in p])
+            else:
+                with open(name, 'w', newline='') as csvfile:
+                    csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+                    csvwriter.writerow(['Ground-truth', 'frame', 'xnm', 'ynm', 'znm', 'intensity', 'nms_p', 'x_sig',
+                                        'y_sig', 'z_sig', 'I_sig','xo','yo','xo_rescale','yo_rescale','xnm_rescale','ynm_rescale'])
+                    for p in pred_list:
+                        csvwriter.writerow([repr(f) for f in p])
         else:
             with open(name, 'a', newline='') as csvfile:
                 csvwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
@@ -112,7 +120,7 @@ def crop_preds(preds, sl=None, lims=None, z_lim=[-np.inf, np.inf], pix_nm=[100, 
     preds = np.array(preds)
     inds = np.argwhere(
         (preds[:, 1] > i_l) & (preds[:, 1] < i_h) & (preds[:, 3] > y_l) & (preds[:, 3] < y_h) & (preds[:, 2] > x_l) & (
-                    preds[:, 2] < x_h) & (preds[:, 4] > z_lim[0]) & (preds[:, 4] < z_lim[1]))[:, 0]
+                preds[:, 2] < x_h) & (preds[:, 4] > z_lim[0]) & (preds[:, 4] < z_lim[1]))[:, 0]
     preds = preds[inds]
     preds[:, 2] -= x_l
     preds[:, 3] -= y_l

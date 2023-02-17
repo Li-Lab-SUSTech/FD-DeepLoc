@@ -2,10 +2,10 @@ import collections
 import pickle
 import time
 
-from fd_deeploc_core.train_loss_rec import *
-from fd_deeploc_core.network import *
-from fd_deeploc_core.data_simulator import *
-from fd_deeploc_core.anlz_eval import *
+from .network import *
+from .data_simulator import *
+from .train_loss_rec import *
+from .anlz_eval import *
 
 
 class DeepLocModel(TrainFuncs, LossFuncs, RecFuncs):
@@ -131,9 +131,8 @@ class DeepLocModel(TrainFuncs, LossFuncs, RecFuncs):
             preds_raw, n_per_img, _ = recognition(model=self, eval_imgs_all=self.evaluation_pars['eval_imgs'],
                                                   batch_size=self.evaluation_pars['batch_size'], use_tqdm=False,
                                                   nms=True, candi_thre=candi_thre, nms_thre=nms_thre,
-                                                  rescale_xy=False, pix_nm=self.dat_generator.psf_pars['pixel_size_xy'],
-                                                  plot_num=None, start_field_pos=[0, 0], stack_interval=20000,
-                                                  divide_and_conquer=self.evaluation_pars['divide_and_conquer'],
+                                                  pix_nm=self.dat_generator.psf_pars['pixel_size_xy'],
+                                                  plot_num=None, start_field_pos=[0, 0],
                                                   win_size=self.dat_generator.simulation_pars['train_size'],
                                                   padding=True)
             match_dict, _ = assess(test_frame_nbr=self.evaluation_pars['eval_imgs_number'],
