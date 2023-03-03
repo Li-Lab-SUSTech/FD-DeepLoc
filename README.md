@@ -65,10 +65,13 @@ predict. The test dataset can be downloaded from [![image](https://user-images.g
 the spatially-invariant training data. This demo takes about 5 hours to train a network and tens of minutes to predict. The test dataset can be downloaded from
 [![image](https://user-images.githubusercontent.com/67769465/200457603-cc37c13e-109e-4289-981e-fd0e172fd83f.png)](https://zenodo.org/record/7299197#.Y2m6Q2lBz30).
 
-
+# How to cite
+If you use FD-DeepLoc to process your data, please cite our paper: 
+* Fu, S., Shi, W., Luo, T. et al. Field-dependent deep learning enables high-throughput whole-cell 3D super-resolution imaging. Nat Methods (2023). https://doi.org/10.1038/s41592-023-01775-5
 
 # Contact
 For any questions / comments about this software, please contact [Li Lab](https://faculty.sustech.edu.cn/liym2019/en/).
 
 # Copyright
 Copyright (c) 2022 Li Lab, Southern University of Science and Technology, Shenzhen.
+
