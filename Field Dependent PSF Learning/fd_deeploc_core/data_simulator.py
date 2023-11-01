@@ -43,23 +43,41 @@ class DataSimulator(PSF_VECTOR_GPU):
                                  4, -2, 0, 4, 2, 0, 5, -1, 0, 5, 1, 0, 6, 0, 0, 4, -4, 0, 4, 4, 0,
                                  5, -3, 0, 5, 3, 0, 6, -2, 0, 6, 2, 0, 7, 1, 0, 7, -1, 0, 8, 0, 0],
                                 dtype=np.float32).reshape(21, 3).T
-        plt.figure(constrained_layout=True)
-        # plt.figure()
-        for i in range(zernikeModes.shape[1]):
-            ax_tmp = plt.subplot(5, 5, i + 1)
-            img_tmp = plt.imshow(self.aber_map[:, :, i] * self.psf_pars['lambda'])
+        fringe_order = np.stack([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,21,22,23, 28, 29, 36])
+        if self.aber_map.shape[2]==45:
+            plt.figure(constrained_layout=True)
+            for i in range(zernikeModes.shape[1]):
+                ax_tmp = plt.subplot(5, 5, i + 1)
+                img_tmp = plt.imshow(self.aber_map[:, :, fringe_order[i],1] * self.psf_pars['lambda'])
+                plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
+                plt.title(str(zernikeModes[0:2, i]))
+            ax_tmp=plt.subplot(5, 5, i + 2)
+            img_tmp=plt.imshow((self.aber_map[:, :, 0, 1]*0+1)*self.psf_pars['otf_sigma'][0])
             plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
-            plt.title(str(zernikeModes[0:2, i]))
-        ax_tmp=plt.subplot(5, 5, i + 2)
-        img_tmp=plt.imshow(self.aber_map[:, :, 21])
-        plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
-        plt.title('IsigmaX')
-        ax_tmp=plt.subplot(5, 5, i + 3)
-        img_tmp=plt.imshow(self.aber_map[:, :, 22])
-        plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
-        plt.title('IsigmaY')
-        # plt.tight_layout()
-        plt.show()
+            plt.title('IsigmaX')
+            ax_tmp=plt.subplot(5, 5, i + 3)
+            img_tmp=plt.imshow((self.aber_map[:, :, 0, 1]*0+1)*self.psf_pars['otf_sigma'][1])
+            plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
+            plt.title('IsigmaY')
+            # plt.tight_layout()
+            plt.show()
+        else:
+            plt.figure(constrained_layout=True)
+            for i in range(zernikeModes.shape[1]):
+                ax_tmp = plt.subplot(5, 5, i + 1)
+                img_tmp = plt.imshow(self.aber_map[:, :, i] * self.psf_pars['lambda'])
+                plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
+                plt.title(str(zernikeModes[0:2, i]))
+            ax_tmp=plt.subplot(5, 5, i + 2)
+            img_tmp=plt.imshow((self.aber_map[:, :, 0]*0+1)*self.psf_pars['otf_sigma'][0])
+            plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
+            plt.title('IsigmaX')
+            ax_tmp=plt.subplot(5, 5, i + 3)
+            img_tmp=plt.imshow((self.aber_map[:, :, 0]*0+1)*self.psf_pars['otf_sigma'][1])
+            plt.colorbar(mappable=img_tmp,ax=ax_tmp,fraction=0.046, pad=0.04)
+            plt.title('IsigmaY')
+            # plt.tight_layout()
+            plt.show()
 
     def look_psf(self, pos_xy, z_scale=1000):
         print('PSF at position xy in aberration map:', pos_xy,
