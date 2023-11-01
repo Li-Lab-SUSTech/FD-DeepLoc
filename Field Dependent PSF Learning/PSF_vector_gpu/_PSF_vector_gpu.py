@@ -30,9 +30,10 @@ class PSF_VECTOR_GPU:
             If True, add small zernike disturbance to the simulated PSFs
         """
         try:
-            psf = CDLL("PSF_vector_gpu/psf_simu_gpu.dll", winmode=0)
+            psf = CDLL("../../PSF_vector_gpu/psf_sim_gpu_phase.dll", winmode=0)
         except FileNotFoundError:
-            psf = CDLL("../../PSF_vector_gpu/psf_simu_gpu.dll", winmode=0)
+            print('not found')
+            # psf = CDLL("../../PSF_vector_gpu/psf_simu_gpu_phase.dll", winmode=0)
 
         # psf = CDLL("F:/projects/FS_work/psf_simu_gpu_LTD/x64/Debug/psf_simu_gpu.dll", winmode=0)
 
@@ -56,10 +57,10 @@ class PSF_VECTOR_GPU:
                 ('xemit_', POINTER(c_float)),
                 ('yemit_', POINTER(c_float)),
                 ('zemit_', POINTER(c_float)),
-                ('objstage_', POINTER(c_float)),
-                ('aberrationsParas_', POINTER(c_float)),
+                ('objStage_', POINTER(c_float)),
+                ('aberrationsImgParas_', POINTER(c_float)),
+                ('aberrationsRealParas_', POINTER(c_float)),
                 ('psfOut_', POINTER(c_float)),
-                ('aberrationOut_', POINTER(c_float)),
                 ('Nmol_', c_int),
                 ('showAberrationNumber_', c_int)
             ]
@@ -86,17 +87,33 @@ class PSF_VECTOR_GPU:
         sP.zemit0_ = -1 * sP.refmed_ / sP.refimm_ * (sP.objStage0_)
         sP.pixelSizeX_ = self.psf_pars['pixel_size_xy'][1]
         sP.pixelSizeY_ = self.psf_pars['pixel_size_xy'][0]
-        sP.zernikeModesN_ = 21
+        # sP.zernikeModesN_ = aber_map.shape[2]
         sP.sizeX_ = npSizeX
         sP.sizeY_ = npSizeY
         sP.PupilSize_ = 1.0
         sP.showAberrationNumber_ = 1
-        zernikeModes = np.array([2, -2, 0, 2, 2, 0, 3, -1, 0, 3, 1, 0, 4, 0, 0, 3, -3, 0, 3, 3, 0,
+        if aber_map.shape[2] == 45:
+            zernikeModes = np.array([ 0, 0, 0 ,
+                                  1, -1, 0 ,  1, 1, 0 ,
+                                  2, 0, 0 ,  2, -2, 0 ,  2, 2, 0 ,
+                                  3, -1, 0 ,  3, 1, 0 ,  3, -3, 0 ,  3, 3, 0 ,
+                                  4, 0, 0 ,  4, 2, 0 ,  4, -2, 0 ,  4, -4, 0 ,  4, 4, 0 ,
+                                  5, 1, 0 ,  5, -1, 0 ,  5, -3, 0 ,  5, 3, 0 ,  5, -5, 0 ,  5, 5, 0 ,
+                                  6, 0, 0 ,  6, -2, 0 ,  6, 2, 0 ,  6, -4, 0 ,  6, 4, 0 ,  6, -6, 0 ,  6, 6, 0 ,
+                                  7, -1, 0 ,  7, 1, 0 ,  7, -3, 0 ,  7, 3, 0 ,  7, -5, 0 ,  7, 5, 0 ,  7, -7, 0 ,
+                                  7, 7, 0 ,
+                                  8, 0, 0 ,  8, -2, 0 ,  8, 2, 0 ,  8, -4, 0 ,  8, 4, 0 ,  8, -6, 0 ,  8, 6, 0 ,
+                                  8, -8, 0 ,  8, 8, 0 ], dtype=np.float32).reshape(45,3).T
+
+        else:
+            zernikeModes = np.array([0, 0, 0, 2, -2, 0, 2, 2, 0, 3, -1, 0, 3, 1, 0, 4, 0, 0, 3, -3, 0, 3, 3, 0,
                                  4, -2, 0, 4, 2, 0, 5, -1, 0, 5, 1, 0, 6, 0, 0, 4, -4, 0, 4, 4, 0,
                                  5, -3, 0, 5, 3, 0, 6, -2, 0, 6, 2, 0, 7, 1, 0, 7, -1, 0, 8, 0, 0],
-                                dtype=np.float32).reshape(21, 3).T
+                                dtype=np.float32).reshape(22, 3).T
+            aber_map = np.append(np.expand_dims(aber_map[:, :, 0] * 0, axis=2), aber_map[:, :, :], axis=2)
+        sP.zernikeModesN_ = aber_map.shape[2]
         zernikeModes[2, :] = zernikeModes[2, :] * sP.lambdaX_
-        zernikeModes = zernikeModes.reshape(3, 21).flatten()
+        zernikeModes = zernikeModes.reshape(3, aber_map.shape[2]).flatten()
 
         sP.aberrations_ = zernikeModes.ctypes.data_as(POINTER(c_float))
 
@@ -104,7 +121,10 @@ class PSF_VECTOR_GPU:
         # npXYZOBuffer = np.empty((4, Nmol), dtype=np.float32, order='C')
         npPSFBuffer = np.empty((Nmol, npSizeX, npSizeY), dtype=np.float32, order='C')
         npWaberrationBuffer = np.empty((int(sP.Npupil_), int(sP.Npupil_)), dtype=np.float32, order='C')
-        aberrationsParas = np.empty((Nmol, sP.zernikeModesN_), dtype=np.float32, order='C')
+        # aberrationsParas = np.empty((Nmol, sP.zernikeModesN_), dtype=np.float32, order='C')
+        aberrationsRealParas = np.empty((Nmol, sP.zernikeModesN_), dtype=np.float32, order='C')
+        aberrationsImgParas = np.empty((Nmol, sP.zernikeModesN_), dtype=np.float32, order='C')
+
 
         sP.xemit_ = npXemit.ctypes.data_as(POINTER(c_float))
         sP.yemit_ = npYemit.ctypes.data_as(POINTER(c_float))
@@ -117,14 +137,27 @@ class PSF_VECTOR_GPU:
         # data with some random aberrations can help network generalize
         if robust_training:
             for n in range(0, Nmol):
-                aberrationsParas[n] = aber_map_crop[S[n, 1], S[n, 2], 0:21] + \
-                                      np.random.normal(loc=0, scale=0.01, size=21)
+                aberrationsRealParas[n] = aber_map_crop[S[n, 1], S[n, 2], :, 0] + \
+                                      np.random.normal(loc=0, scale=0.01, size=aber_map.shape[2])
+                aberrationsImgParas[n] = aber_map_crop[S[n, 1], S[n, 2], :, 1] + \
+                                      np.random.normal(loc=0, scale=0.01, size=aber_map.shape[2])
         else:
             for n in range(0, Nmol):
-                aberrationsParas[n] = aber_map_crop[S[n, 1], S[n, 2], 0:21]
+                if aber_map_crop.ndim == 3:
+                    aberrationsRealParas[n] = aber_map_crop[S[n, 1], S[n, 2], :]*0
+                    aberrationsRealParas[n,0]  = aberrationsRealParas[n,0]+1/2/np.pi
+                    aberrationsImgParas[n] = aber_map_crop[S[n, 1], S[n, 2], :]
+                else:
+                    aberrationsRealParas[n] = aber_map_crop[S[n, 1], S[n, 2], :, 0]
+                    aberrationsImgParas[n] = aber_map_crop[S[n, 1], S[n, 2], :, 1]
 
-        aberrationsParas = aberrationsParas * sP.lambdaX_  # multiply with lambda
-        sP.aberrationsParas_ = aberrationsParas.ctypes.data_as(POINTER(c_float))
+        # aberrationsParas = aberrationsParas * sP.lambdaX_  # multiply with lambda
+        # sP.aberrationsParas_ = aberrationsParas.ctypes.data_as(POINTER(c_float))
+        aberrationsRealParas = aberrationsRealParas * sP.lambdaX_  # multiply with lambda
+        aberrationsImgParas = aberrationsImgParas * sP.lambdaX_  # multiply with lambda
+        sP.aberrationsRealParas_ = aberrationsRealParas.ctypes.data_as(POINTER(c_float))
+        sP.aberrationsImgParas_ = aberrationsImgParas.ctypes.data_as(POINTER(c_float))
+
         sP.psfOut_ = npPSFBuffer.ctypes.data_as(POINTER(c_float))
 
         sP.aberrationOut_ = npWaberrationBuffer.ctypes.data_as(POINTER(c_float))
@@ -136,8 +169,8 @@ class PSF_VECTOR_GPU:
         # otf rescale
         npPSFBuffer = gpu(npPSFBuffer)
         for i in range(len(npPSFBuffer)):
-            h = gpu(otf_gauss2D(shape=[5, 5], Isigmax=aber_map_crop[S[i, 1], S[i, 2], 21],
-                                Isigmay=aber_map_crop[S[i, 1], S[i, 2], 22])).reshape([1, 1, 5, 5])
+            h = gpu(otf_gauss2D(shape=[5, 5], Isigmax=self.psf_pars['otf_sigma'][0],
+                                Isigmay=self.psf_pars['otf_sigma'][0])).reshape([1, 1, 5, 5])
             tmp = nn.functional.conv2d(
                 npPSFBuffer[i].reshape(1, 1, self.psf_pars['psf_size'], self.psf_pars['psf_size'])
                 , h, padding=2, stride=1)
