@@ -68,7 +68,7 @@ the spatially-invariant training data. This demo takes about 5 hours to train a 
 5. `demo5` trains a network based on our experimental large-FOV astigmatism NPC dataset for in-situ FD PSF.
 The corresponding test dataset is the same as `demo2`. `demo5` is an example that is fully compatible with uiPSF.
 This demo takes about 5 hours to train and tens of minutes to predict. The test .h5 file can be downloaded from
-[![image](https://user-images.githubusercontent.com/67769465/200457603-cc37c13e-109e-4289-981e-fd0e172fd83f.png)](https://zenodo.org/records/10065528).
+[![image](https://zenodo.org/badge/DOI/10.5281/zenodo.10065528.svg)](https://zenodo.org/records/10065528).
 
 # How to cite
 If you use FD-DeepLoc to process your data, please cite our paper: 
