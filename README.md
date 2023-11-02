@@ -28,7 +28,7 @@ The notebook file `.ipynb` itself contains detailed instruction. And a general t
 2. Field-dependent deep-learning localization network (including training and inference examples)
 
 # Demo examples (applicable for release FD-DeepLoc-v1.0.0)
-There are 4 different demo notebooks in the folder `Field Dependent PSF Learning\demo_notebooks` to illustrate the 
+There are 5 different demo notebooks in the folder `Field Dependent PSF Learning\demo_notebooks` to illustrate the 
 use of FD-DeepLoc. To run one demo, the user needs to download the corresponding test dataset using the link below and uncompress it under the 
 folder `demo_datasets`. For each demo example, we provide a training notebook `train.ipynp`, an inference notebook `inference.ipynb`, 
 test datasets `.tif`, aberration maps `aber_map.mat` and trained models `FD-DeepLoc.pkl`. One can run the training notebook to train a network from scratch or
@@ -63,6 +63,11 @@ predict. The test dataset can be downloaded from [![image](https://user-images.g
 (aberration maps are uniform). It is based on our experimental DMO-SaddlePoint PSF (1.2μm) NPC dataset
 (supplementary fig.5). The CoordConv is turned off as it will not learn any extra information from 
 the spatially-invariant training data. This demo takes about 5 hours to train a network and tens of minutes to predict. The test dataset can be downloaded from
+[![image](https://user-images.githubusercontent.com/67769465/200457603-cc37c13e-109e-4289-981e-fd0e172fd83f.png)](https://zenodo.org/record/7299197#.Y2m6Q2lBz30).
+
+5. `demo5` trains a network based on our experimental large-FOV astigmatism NPC dataset for in-situ FD PSF.
+The corresponding test dataset is the same as `demo2`. `demo5` is an example that is fully compatible with uiPSF.
+This demo takes about 5 hours to train and tens of minutes to predict. The test .h5 file can be downloaded from
 [![image](https://user-images.githubusercontent.com/67769465/200457603-cc37c13e-109e-4289-981e-fd0e172fd83f.png)](https://zenodo.org/record/7299197#.Y2m6Q2lBz30).
 
 # How to cite
