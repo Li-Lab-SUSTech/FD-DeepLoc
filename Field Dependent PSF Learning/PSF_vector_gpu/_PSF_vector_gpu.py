@@ -1,5 +1,5 @@
 from ctypes import *
-
+from scipy.io import loadmat
 import numpy as np
 import torch.nn as nn
 
@@ -177,3 +177,42 @@ class PSF_VECTOR_GPU:
             npPSFBuffer[i] = tmp.reshape(self.psf_pars['psf_size'], self.psf_pars['psf_size'])
 
         return npPSFBuffer
+
+
+    def sim_psf_cspline(self, X_os, Y_os, Z):
+        """Generate the PSFs based on C code
+
+        Parameters
+        ----------
+        X_os:
+            Sub_pixel x offset
+        Y_os:
+            Sub_pixel y offset
+        Z:
+            Z position
+        """
+
+        psf = CDLL("../../PSF_vector_gpu/cspline.dll", winmode=0)
+
+        if "coeff_path" in self.psf_pars:
+            coeff = loadmat(self.psf_pars["coeff_path"])["coeff"]
+        else:
+            print("Error! Please add coeff path!")
+            return None
+
+
+
+        Npixels = self.psf_pars['psf_size']
+
+        npXemit = np.array(np.squeeze(X_os) , dtype=np.float32) + 0.5 * Npixels
+        npYemit = np.array(np.squeeze(Y_os) , dtype=np.float32) + 0.5 * Npixels
+        npZemit = np.array(np.squeeze(Z) , dtype=np.float32)
+        coeff = np.array(coeff, dtype=np.float32)
+
+        nfits = npXemit.shape[0]
+        splinesize = np.array(np.flip(coeff.shape))
+        npPSF = np.zeros((nfits,Npixels,Npixels), dtype=np.float32)
+
+        psf.splinePsf(coeff,npXemit,npYemit,npZemit,nfits,Npixels,splinesize,npPSF)
+
+        return npPSF
